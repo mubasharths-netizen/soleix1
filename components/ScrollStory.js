@@ -10,7 +10,7 @@ export default function ScrollStory() {
   const reduce = useReducedMotion();
   const wrapRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: wrapRef, offset: ["start start", "end end"] });
-  const shoeX = useTransform(scrollYProgress, [0.05, 0.5, 0.95], ["-24%", "18%", "62%"]);
+  const shoeX = useTransform(scrollYProgress, [0.05, 0.5, 0.95], ["36%", "4%", "-16%"]);
   const shoeRotate = useTransform(scrollYProgress, [0.05, 0.5, 0.95], [-9, 4, 16]);
   const lineFast = useTransform(scrollYProgress, [0.1, 0.55], [90, -40]);
   const lineMid = useTransform(scrollYProgress, [0.18, 0.62], [60, -24]);

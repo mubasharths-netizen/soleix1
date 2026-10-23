@@ -1,8 +1,6 @@
 import { Geist, Barlow_Condensed } from "next/font/google";
 import { StoreProvider } from "@/components/StoreProvider";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import CartDrawer from "@/components/CartDrawer";
+import IntroOverlay from "@/components/IntroOverlay";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -15,5 +13,5 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
-  return <html lang="en" className={`${geist.variable} ${display.variable}`}><body><StoreProvider><a className="skip-link" href="#main-content">Skip to content</a><Header /><main id="main-content">{children}</main><Footer /><CartDrawer /></StoreProvider></body></html>;
+  return <html lang="en" className={`${geist.variable} ${display.variable}`}><body><StoreProvider><IntroOverlay /><a className="skip-link" href="#main-content">Skip to content</a>{children}</StoreProvider></body></html>;
 }

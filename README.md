@@ -30,8 +30,8 @@ npm start          # → http://localhost:3000
 | `/info/[slug]` | Delivery, returns, size guide, FAQ, about, approach, contact, community, privacy, terms |
 
 - **Cart & favourites persist** in `localStorage` (`soleix-store-v1`) across refreshes and tabs.
-- **Video campaigns** autoplay muted/looping once scrolled near, fade in over their poster, pause when off-screen, and fall back to the poster if a video fails — never a black box.
-- **Motion** via framer-motion: scroll reveals (once per element), staggered hero text entrance, animated wishlist heart, add-to-cart feedback, page transitions, sticky-header scroll state. Everything respects `prefers-reduced-motion`.
+- **Video campaigns** autoplay muted/looping once scrolled near, fade in over their poster, pause when off-screen, expose a play/pause control, and fall back to the poster if a video fails — never a black box.
+- **Motion layer** (framer-motion): once-per-session cinematic SOLEIX intro, 3D mouse-tilt sneaker showcase with moving shadow and float, sticky scroll-driven story section, draggable carousels, staggered word-reveal headings, animated wishlist/success feedback, alternate product imagery on hover, nav underline + button micro-interactions, subtle background drift. Everything respects `prefers-reduced-motion`.
 - Loading (`app/loading.js`), empty and error (`app/error.js`, `app/not-found.js`) states included.
 - Responsive at mobile (390px), tablet (820px) and desktop (1440px+) with no horizontal overflow.
 
@@ -41,11 +41,12 @@ npm start          # → http://localhost:3000
 app/                 routes + layout, template.js (page transitions), globals.css design system
 components/          Header, Footer, ProductCard, ShopBrowser, ProductDetail,
                      CartDrawer, CartContents, StoreProvider, Modal, Newsletter,
-                     VideoCampaign (lazy video hero/campaigns), Carousel, Reveal
-lib/products.js      sample catalog (PKR prices), helpers
+                     VideoCampaign (lazy video hero/campaigns), Carousel, Reveal,
+                     StaggerText, IntroOverlay, SneakerShowcase, ScrollStory
+lib/products.js      sample catalog (PKR prices, alt imagery, stock states), helpers
 public/images/       original generated photography (WebP) + video posters
 public/videos/       free-license stock videos from Coverr (cdn.coverr.co, 720p MP4)
-tests/verify.mjs     Playwright end-to-end checks (59 assertions)
+tests/verify.mjs     Playwright end-to-end checks (78 assertions)
 ```
 
 ## Verify

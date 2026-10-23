@@ -22,6 +22,17 @@ export default function Icon({ name, size = 20, className = "", ...props }) {
     pin: <><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 14 0Z" /><circle cx="12" cy="10" r="2" /></>,
     instagram: <><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r=".7" fill="currentColor" /></>,
     globe: <><circle cx="12" cy="12" r="9" /><ellipse cx="12" cy="12" rx="4" ry="9" /><path d="M3 12h18" /></>,
+    grid: <><rect x="3" y="3" width="7.5" height="7.5" rx="2" /><rect x="13.5" y="3" width="7.5" height="7.5" rx="2" /><rect x="3" y="13.5" width="7.5" height="7.5" rx="2" /><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" /></>,
+    store: <><path d="M4 9.5V20h16V9.5" /><path d="M3 9.5 5.5 4h13L21 9.5a3 3 0 0 1-5 0 3 3 0 0 1-4 0 3 3 0 0 1-4 0 3 3 0 0 1-5 0Z" /></>,
+    box: <><path d="M12 3 20 7v10l-8 4-8-4V7l8-4Z" /><path d="M4 7l8 4 8-4M12 11v10" /></>,
+    tag: <><path d="M3 12.5V4h8.5L21 13.5 13.5 21 3 12.5Z" /><circle cx="7.5" cy="8" r="1.6" /></>,
+    receipt: <><path d="M5 3h14v18l-2.5-1.8L14 21l-2-1.8L10 21l-2.5-1.8L5 21V3Z" /><path d="M9 8h6M9 12h6" /></>,
+    layers: <><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" /></>,
+    chart: <><path d="M4 20V4M4 20h16" /><path d="M8 16v-5M12.5 16V7M17 16v-3" /></>,
+    gear: <><circle cx="12" cy="12" r="3.2" /><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7" /></>,
+    logout: <><path d="M14 4H5v16h9" /><path d="M18 8l4 4-4 4M9 12h13" /></>,
+    image: <><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="9" cy="10" r="1.7" /><path d="m4 19 6-6 5 5 3-3 3 3" /></>,
+    users: <><circle cx="9" cy="8" r="3.4" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 5.4a3.4 3.4 0 0 1 0 5.2M17.5 20a6.4 6.4 0 0 0-2-4.6" /></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} {...props}>{paths[name] || paths.arrow}</svg>;
 }

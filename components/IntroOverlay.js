@@ -1,29 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 export default function IntroOverlay() {
   const reduce = useReducedMotion();
+  const pathname = usePathname();
+  const landingPath = useRef(pathname);
   const [phase, setPhase] = useState("off");
 
   useEffect(() => {
-    if (reduce) return;
+    if (reduce || landingPath.current !== "/") return;
     let seen = false;
     try {
       seen = sessionStorage.getItem("soleix-intro") === "1";
       sessionStorage.setItem("soleix-intro", "1");
     } catch { seen = false; }
     if (seen) return;
-    setPhase("in");
+    const show = setTimeout(() => setPhase("in"), 0);
     const out = setTimeout(() => setPhase("out"), 1650);
     const off = setTimeout(() => setPhase("off"), 2450);
-    return () => { clearTimeout(out); clearTimeout(off); };
+    return () => { clearTimeout(show); clearTimeout(out); clearTimeout(off); };
   }, [reduce]);
 
   return (
     <AnimatePresence>
-      {phase !== "off" && (
+      {phase !== "off" && pathname === "/" && (
         <motion.div className="intro-overlay" exit={{ y: "-100%" }} transition={{ duration: 0.75, ease: [0.76, 0, 0.24, 1] }}>
           <motion.p className="intro-wordmark" aria-label="SOLEIX">
             {"SOLEIX".split("").map((letter, index) => (

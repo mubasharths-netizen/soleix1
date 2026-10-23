@@ -5,14 +5,12 @@ import Newsletter from "@/components/Newsletter";
 import VideoCampaign from "@/components/VideoCampaign";
 import Reveal from "@/components/Reveal";
 import StaggerText from "@/components/StaggerText";
-import IntroOverlay from "@/components/IntroOverlay";
 import SneakerShowcase from "@/components/SneakerShowcase";
 import ScrollStory from "@/components/ScrollStory";
 import Icon from "@/components/Icon";
 
 export default function Home() {
   return <>
-    <IntroOverlay />
     <VideoCampaign
       as="h1"
       eager

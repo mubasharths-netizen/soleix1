@@ -22,25 +22,75 @@ const overflow = async (label) => {
   check(`no horizontal overflow @1440 ${label}`, width <= 0, `overflow ${width}px`);
 };
 
+const dismissIntro = async (p) => { await p.locator(".intro-overlay").waitFor({ state: "detached", timeout: 7000 }).catch(() => {}); };
+
 // 1. Homepage
 await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
 check("hero headline", await page.getByRole("heading", { name: /FIND YOUR/ }).first().isVisible());
 check("promo bar", await page.getByText("Free shipping on orders over PKR 15,000").first().isVisible());
 check("hero video element", (await page.locator(".hero-campaign video").count()) === 1);
 check("hero poster visible", await page.locator(".hero-campaign .campaign-poster").isVisible());
-try { await page.waitForFunction(() => { const v = document.querySelector(".hero-campaign video"); return v && v.classList.contains("is-ready"); }, { timeout: 15000 }); } catch {}
+try { await page.waitForFunction(() => { const v = document.querySelector(".hero-campaign video"); return v && v.classList.contains("is-ready") && !v.paused; }, { timeout: 15000 }); } catch {}
 check("hero video fades in over poster", await page.locator(".hero-campaign video.is-ready").count() === 1);
 check("hero video is playing", await page.locator(".hero-campaign video").evaluate((v) => !v.paused && v.currentTime >= 0));
 check("below-fold videos not preloaded", (await page.locator(".video-campaign:not(.hero-campaign) video[src]").count()) === 0);
+check("hero pause control appears", await page.locator(".hero-campaign .video-toggle").isVisible());
+await page.locator(".hero-campaign .video-toggle").click();
+check("pause control stops video", await page.locator(".hero-campaign video").evaluate((v) => v.paused));
+await page.locator(".hero-campaign .video-toggle").click();
+check("play control resumes video", await page.locator(".hero-campaign video").evaluate((v) => !v.paused));
+await dismissIntro(page);
 await page.screenshot({ path: `${shots}/desktop-home.png`, fullPage: false });
 await overflow("home");
+
+// 1a. Cinematic intro — once per session only
+const intro = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await intro.goto(`${BASE}/`, { waitUntil: "commit" });
+try { await intro.locator(".intro-overlay").waitFor({ state: "visible", timeout: 4000 }); } catch {}
+check("intro overlay shows on first visit", await intro.locator(".intro-overlay").isVisible().catch(() => false));
+await intro.waitForTimeout(700);
+await intro.screenshot({ path: `${shots}/intro.png` });
+await intro.waitForTimeout(3200);
+check("intro clears on its own", (await intro.locator(".intro-overlay").count()) === 0);
+await intro.reload({ waitUntil: "commit" });
+await intro.waitForTimeout(900);
+check("intro does not repeat in session", (await intro.locator(".intro-overlay").count()) === 0);
+await intro.close();
+
+// 1b. 3D sneaker showcase
+await page.locator(".sneaker-showcase").scrollIntoViewIfNeeded();
+await page.waitForTimeout(900);
+check("sneaker showcase visible", await page.locator(".sneaker-showcase").isVisible());
+const stageBox = await page.locator(".showcase-stage").boundingBox();
+await page.mouse.move(stageBox.x + stageBox.width * 0.85, stageBox.y + stageBox.height * 0.25);
+await page.waitForTimeout(500);
+const tilt = await page.locator(".showcase-tilt").evaluate((el) => getComputedStyle(el).transform);
+check("sneaker tilts with mouse (3D)", tilt && tilt !== "none", String(tilt).slice(0, 46));
+await page.mouse.move(stageBox.x + stageBox.width * 0.15, stageBox.y + stageBox.height * 0.75);
+await page.waitForTimeout(500);
+const tilt2 = await page.locator(".showcase-tilt").evaluate((el) => getComputedStyle(el).transform);
+check("tilt follows the pointer", tilt2 !== tilt);
+await page.screenshot({ path: `${shots}/desktop-showcase.png` });
+
+// 1c. Scroll-driven story
+await page.evaluate(() => { const el = document.querySelector(".scroll-story"); const rect = el.getBoundingClientRect(); window.scrollTo(0, window.scrollY + rect.top + window.innerHeight * 1.5); });
+await page.waitForTimeout(800);
+const shoe0 = await page.locator(".story-shoe").evaluate((el) => getComputedStyle(el).transform);
+await page.screenshot({ path: `${shots}/desktop-scrollstory.png` });
+await page.mouse.wheel(0, 1400);
+await page.waitForTimeout(600);
+const shoe1 = await page.locator(".story-shoe").evaluate((el) => getComputedStyle(el).transform);
+check("story shoe moves with scroll", shoe0 !== shoe1, `${shoe0.slice(0, 20)} → ${shoe1.slice(0, 20)}`);
+check("story stage stays readable (sticky)", await page.locator(".story-heading").isVisible());
+await page.evaluate(() => window.scrollTo(0, 0));
+await page.waitForTimeout(400);
 
 // 1b. Video campaign lazy-load + pause
 await page.locator(".run-campaign").scrollIntoViewIfNeeded();
 try { await page.waitForFunction(() => { const v = document.querySelector(".run-campaign video"); return v && v.src !== ""; }, { timeout: 10000 }); } catch {}
 check("run campaign video loads on approach", await page.locator(".run-campaign video").evaluate((v) => v.src.includes("seaside")));
 await page.locator(".trail-campaign").scrollIntoViewIfNeeded();
-try { await page.waitForFunction(() => { const v = document.querySelector(".trail-campaign video"); return v && v.classList.contains("is-ready"); }, { timeout: 15000 }); } catch {}
+try { await page.waitForFunction(() => { const v = document.querySelector(".trail-campaign video"); return v && v.classList.contains("is-ready") && !v.paused; }, { timeout: 15000 }); } catch {}
 check("trail campaign video plays", await page.locator(".trail-campaign video").evaluate((v) => !v.paused));
 await page.locator("footer").scrollIntoViewIfNeeded();
 await page.waitForTimeout(800);
@@ -73,15 +123,26 @@ await page.locator(".collection-tabs button", { hasText: "New Arrivals" }).click
 check("carousel remounts per tab", (await page.locator(".featured-section .product-card").count()) >= 3);
 
 // 2. Quick add + cart persistence
+await page.locator(".featured-section").scrollIntoViewIfNeeded();
+await page.waitForTimeout(600);
+const altBefore = await page.locator(".product-card .product-photo.alt").first().evaluate((el) => getComputedStyle(el).opacity);
 await page.locator(".product-card").first().hover();
+await page.waitForTimeout(700);
+const altAfter = await page.locator(".product-card .product-photo.alt").first().evaluate((el) => getComputedStyle(el).opacity);
+check("alternate imagery crossfades on hover", Number(altBefore) < 0.2 && Number(altAfter) > 0.8, `${altBefore} → ${altAfter}`);
+check("low stock chip visible", await page.locator(".stock-chip").first().isVisible());
 await page.locator(".product-card").first().locator(".quick-add").click();
 await page.getByText("Make them yours").waitFor();
+check("sold-out size disabled in quick-add", await page.locator(".size-button", { hasText: "EU 44" }).first().isDisabled());
 await page.locator(".size-button", { hasText: "EU 42" }).first().click();
+check("selected size confirmed", await page.locator(".size-selected").isVisible());
 await page.getByRole("button", { name: /Add to Bag/ }).first().click();
 await page.getByText("Your bag (1)").waitFor();
+check("add-to-cart success animation", await page.locator(".added-check").isVisible());
 check("bag badge = 1", (await page.locator(".bag-count").innerText()).trim() === "1");
 await page.keyboard.press("Escape");
 await page.reload({ waitUntil: "networkidle" });
+await dismissIntro(page);
 check("cart persists after reload", (await page.locator(".bag-count").innerText()).trim() === "1");
 await page.screenshot({ path: `${shots}/desktop-cartdrawer.png` });
 
@@ -159,6 +220,7 @@ const mobileOverflow = async (label) => {
   check(`no horizontal overflow @390 ${label}`, width <= 0, `overflow ${width}px`);
 };
 await mobile.goto(`${BASE}/`, { waitUntil: "networkidle" });
+await dismissIntro(mobile);
 check("mobile menu button", await mobile.locator(".mobile-menu-toggle").isVisible());
 await mobile.locator(".mobile-menu-toggle").click();
 await mobile.getByRole("navigation", { name: "Mobile navigation" }).getByRole("link", { name: "Women", exact: true }).click();
@@ -188,6 +250,7 @@ await mobileOverflow("cart mobile");
 // 10. Large desktop width constraint
 const wide = await browser.newPage({ viewport: { width: 1956, height: 1091 } });
 await wide.goto(`${BASE}/`, { waitUntil: "networkidle" });
+await dismissIntro(wide);
 const gridWidth = await wide.locator(".featured-section .carousel-track").evaluate((el) => el.getBoundingClientRect().width);
 check("featured grid constrained at 1956px", gridWidth <= 1560, `${Math.round(gridWidth)}px`);
 await wide.locator(".featured-section").scrollIntoViewIfNeeded();
@@ -196,6 +259,7 @@ await wide.screenshot({ path: `${shots}/wide-home.png` });
 // 11. Tablet
 const tablet = await browser.newPage({ viewport: { width: 820, height: 1180 } });
 await tablet.goto(`${BASE}/`, { waitUntil: "networkidle" });
+await dismissIntro(tablet);
 const tabletOverflow = await tablet.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 check("no horizontal overflow @820 home", tabletOverflow <= 0, `overflow ${tabletOverflow}px`);
 await tablet.screenshot({ path: `${shots}/tablet-home.png` });
@@ -206,6 +270,9 @@ await rm.goto(`${BASE}/`, { waitUntil: "networkidle" });
 check("reduced motion renders no video elements", (await rm.locator(".video-campaign video").count()) === 0);
 check("reduced motion keeps hero poster", await rm.locator(".hero-campaign .campaign-poster").isVisible());
 check("reduced motion keeps hero headline", await rm.getByRole("heading", { name: /FIND YOUR/ }).first().isVisible());
+check("reduced motion skips intro overlay", (await rm.locator(".intro-overlay").count()) === 0);
+check("reduced motion uses static story", await rm.locator(".scroll-story.static-story").isVisible());
+check("reduced motion keeps showcase", await rm.locator(".sneaker-showcase").isVisible());
 await rm.screenshot({ path: `${shots}/reduced-motion-home.png` });
 await rm.close();
 

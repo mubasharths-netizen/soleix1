@@ -20,6 +20,7 @@ export default function VideoCampaign({ as: Heading = "h2", src, poster, posterA
   const [state, setState] = useState("idle");
   const [paused, setPaused] = useState(false);
   const reduce = useReducedMotion();
+  const inView = useRef(false);
   const enter = useEnterProps(eager);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export default function VideoCampaign({ as: Heading = "h2", src, poster, posterA
     const video = videoRef.current;
     if (!video) return;
     const observer = new IntersectionObserver(([entry]) => {
+      inView.current = entry.isIntersecting;
       if (!entry.isIntersecting) { video.pause(); return; }
       if (!video.src) {
         video.src = src;
@@ -38,6 +40,12 @@ export default function VideoCampaign({ as: Heading = "h2", src, poster, posterA
     observer.observe(wrapRef.current);
     return () => observer.disconnect();
   }, [src, reduce]);
+
+  function onCanPlay() {
+    setState("ready");
+    const video = videoRef.current;
+    if (video && inView.current && !video.dataset.userPaused) video.play().catch(() => {});
+  }
 
   function togglePlayback() {
     const video = videoRef.current;
@@ -67,7 +75,7 @@ export default function VideoCampaign({ as: Heading = "h2", src, poster, posterA
           aria-hidden="true"
           tabIndex={-1}
           className={`campaign-video ${state === "ready" ? "is-ready" : ""}`}
-          onCanPlay={() => setState("ready")}
+          onCanPlay={onCanPlay}
           onError={() => setState("failed")}
         />
       )}

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "setup:admin": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/setup-admin.mjs"
   },
   "dependencies": {
     "framer-motion": "^14.6.0",

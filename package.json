@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "setup:admin": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/setup-admin.mjs"
+    "setup:admin": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/setup-admin.mjs",
+    "seed:catalog": "node scripts/seed-catalog.mjs",
+    "seed:demo": "node scripts/seed-demo-data.mjs",
+    "test:auth": "node --env-file-if-exists=.env.local tests/auth.spec.mjs",
+    "test:account": "node tests/account-nav.spec.mjs"
   },
   "dependencies": {
     "framer-motion": "^14.6.0",

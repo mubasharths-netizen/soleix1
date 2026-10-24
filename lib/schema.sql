@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL CHECK (role IN ('superadmin', 'admin', 'shop')),
   active INTEGER NOT NULL DEFAULT 1,
   can_create_shops INTEGER NOT NULL DEFAULT 0,
+  can_manage_products INTEGER NOT NULL DEFAULT 0,
+  can_manage_orders INTEGER NOT NULL DEFAULT 0,
+  can_manage_settings INTEGER NOT NULL DEFAULT 0,
   shop_id INTEGER REFERENCES shops(id) ON DELETE SET NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

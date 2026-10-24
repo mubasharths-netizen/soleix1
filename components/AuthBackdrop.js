@@ -6,7 +6,9 @@ export default function AuthBackdrop() {
   const [showVideo, setShowVideo] = useState(false);
 
   useEffect(() => {
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) setShowVideo(true);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+    const frame = requestAnimationFrame(() => setShowVideo(true));
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   return (

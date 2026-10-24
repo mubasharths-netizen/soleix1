@@ -3,24 +3,29 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
-import { colorValues, collections, formatPrice, products } from "@/lib/products";
+import { colorValues, formatPrice } from "@/lib/catalog.mjs";
 import Icon from "./Icon";
 import ProductCard from "./ProductCard";
-
-const categories = [...new Set(products.map((product) => product.category))];
-const audiences = ["Men", "Women", "Kids"];
-const sizes = [...new Set(products.flatMap((product) => product.sizes))].sort((a, b) => a - b);
-const colors = [...new Set(products.flatMap((product) => product.colors))];
-const priceCeiling = Math.max(...products.map((product) => product.price));
+import { useCatalog } from "./StoreProvider";
 
 export default function ShopBrowser() {
   const searchParams = useSearchParams();
+  const { ready } = useCatalog();
   // Remounting on router navigation reseeds local state from the URL; manual
   // history updates below keep the URL shareable without triggering re-renders.
+  // Filters seed from the catalogue, so nothing mounts before it arrives.
+  if (!ready) return <section className="page-shell catalog-page" aria-busy="true" aria-label="Loading shop"><p className="eyebrow">THE SOLEIX ROTATION</p><h1 className="page-title">Find your next move.</h1><p className="muted" role="status">Getting the rotation ready…</p></section>;
   return <Catalog key={searchParams.toString()} params={searchParams} />;
 }
 
 function Catalog({ params }) {
+  const { products } = useCatalog();
+  const categories = [...new Set(products.map((product) => product.category))];
+  const audiences = ["Men", "Women", "Kids"];
+  const sizes = [...new Set(products.flatMap((product) => product.sizes))].sort((a, b) => a - b);
+  const colors = [...new Set(products.flatMap((product) => product.colors))];
+  const collections = [...new Set(products.flatMap((product) => product.collections))];
+  const priceCeiling = products.reduce((max, product) => Math.max(max, product.price), 0);
   const audience = params.get("audience") || "";
   const collection = params.get("collection") || "";
   const [query, setQuery] = useState(params.get("q") || "");
@@ -51,7 +56,7 @@ function Catalog({ params }) {
   }).sort((a, b) => {
     if (sort === "price-low") return a.price - b.price;
     if (sort === "price-high") return b.price - a.price;
-    return b.date.localeCompare(a.date);
+    return b.dbId - a.dbId;
   });
 
   function syncUrl(patch) {

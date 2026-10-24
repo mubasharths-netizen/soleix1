@@ -1,23 +1,35 @@
+import { headers } from "next/headers";
 import { Card, Notice, PageHead, Table } from "@/components/dashboard/Bits";
 import Icon from "@/components/Icon";
 import { listShops, listUsers, listAdminShops, db } from "@/lib/queries.mjs";
-import { saveUserAction, toggleUserAction } from "@/lib/dashboard-actions";
+import { pendingInvitations } from "@/lib/mutations.mjs";
+import { revokeInvitationAction, saveUserAction, toggleUserAction } from "@/lib/dashboard-actions";
 
 const ROLE_LABEL = { superadmin: "Super Admin", admin: "Admin", shop: "Shop" };
+
+// Read from the users table on every request; the browser can only tick these boxes, never set
+// them for itself.
 export const PERMISSIONS = [
-  { key: "can_create_shops", label: "Create shop accounts" },
-  { key: "can_manage_products", label: "Manage products & stock" },
-  { key: "can_manage_orders", label: "Change order statuses" },
-  { key: "can_manage_settings", label: "Edit shop settings" },
+  { key: "can_create_shops", label: "Create shop accounts", roles: ["admin"] },
+  { key: "can_manage_products", label: "Products & pricing", roles: ["admin", "shop"] },
+  { key: "can_manage_inventory", label: "Stock levels", roles: ["admin", "shop"] },
+  { key: "can_manage_orders", label: "Order manager (statuses, cancellations)", roles: ["admin", "shop"] },
+  { key: "can_update_delivery", label: "Delivery operations (mark delivered)", roles: ["shop"] },
+  { key: "can_collect_cod", label: "Cash collection (confirm COD received)", roles: ["shop"] },
+  { key: "can_manage_settings", label: "Edit shop settings", roles: ["admin"] },
 ];
 
-export default function AdminsView({ user, base, next, flash, params }) {
+export default async function AdminsView({ user, base, next, flash, params }) {
   const users = listUsers();
   const shops = listShops();
+  const invites = pendingInvitations();
+  const host = await headers().then((store) => store.get("x-forwarded-host") || store.get("host") || "localhost:3000");
+  const protocol = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
   const editing = params.edit ? db.prepare("SELECT * FROM users WHERE id = ?").get(Number(params.edit)) : null;
   const isNew = params.new === "1" || !editing;
   const form = editing || {};
   const assignedShops = editing ? listAdminShops(editing.id) : shops.map((shop) => shop.id);
+  const setupLink = typeof params.invitation === "string" && params.invitation ? `${protocol}://${host}/set-password?token=${params.invitation}` : "";
 
   return (
     <>
@@ -33,6 +45,18 @@ export default function AdminsView({ user, base, next, flash, params }) {
         }
       />
       {flash && <Notice kind={flash.kind} text={flash.text} />}
+
+      {setupLink && (
+        <Card title="One-time setup link" description="Send this to the new team member. It works once, expires in 3 days, and the password is stored hashed — never in plain text.">
+          <ol className="setup-steps">
+            <li>
+              <span className="form-label">Share this link</span>
+              <input className="input" readOnly value={setupLink} onFocus={(event) => event.target.select()} />
+            </li>
+            <li>The account cannot sign in until the link is used.</li>
+          </ol>
+        </Card>
+      )}
 
       <Card title={isNew ? "Create account" : `Edit ${form.name}`}>
         <form action={saveUserAction} className="form-grid">
@@ -56,8 +80,8 @@ export default function AdminsView({ user, base, next, flash, params }) {
             </select>
           </label>
           <label className="field">
-            <span className="form-label">{isNew ? "Password" : "New password (blank keeps current)"}</span>
-            <input className="input" type="password" name="password" minLength={8} placeholder="Minimum 8 characters" required={isNew} />
+            <span className="form-label">{isNew ? "Password (blank sends a setup link)" : "New password (blank keeps current)"}</span>
+            <input className="input" type="password" name="password" minLength={isNew ? 0 : 8} placeholder={isNew ? "Leave blank for a one-time link" : "Minimum 8 characters"} />
           </label>
 
           <div className="full">
@@ -79,6 +103,7 @@ export default function AdminsView({ user, base, next, flash, params }) {
                 Account active
               </label>
             </div>
+            <p className="muted" style={{ fontSize: 13 }}>Super Admins always hold every permission. Deactivating an account signs it out at once.</p>
           </div>
 
           <div className="full">
@@ -134,7 +159,9 @@ export default function AdminsView({ user, base, next, flash, params }) {
                 <td className="num">{linked}</td>
                 <td>{granted.length ? granted.map((permission) => permission.label).join(", ") : "—"}</td>
                 <td>
-                  <span className={`badge ${row.active ? "badge-ok" : "badge-off"}`}>{row.active ? "Active" : "Disabled"}</span>
+                  <span className={`badge ${row.active && row.has_password ? "badge-ok" : row.active ? "badge-warn" : "badge-off"}`}>
+                    {row.active ? (row.has_password ? "Active" : "Waiting for setup") : "Disabled"}
+                  </span>
                 </td>
                 <td>
                   <div className="form-actions">
@@ -153,6 +180,29 @@ export default function AdminsView({ user, base, next, flash, params }) {
           })}
           empty="No accounts found."
           emptyHint="Run npm run setup:admin to create the first Super Admin."
+        />
+      </Card>
+
+      <Card title="Open setup links" description="Invitations that have not been used yet. Revoking one stops the account from being created until a new link is sent.">
+        <Table
+          columns={["Account", "Role", "Shop", "Expires", "Actions"]}
+          rows={invites.map((invite) => (
+            <tr key={invite.id}>
+              <td>{invite.name}<div className="muted" style={{ fontSize: 12.5 }}>{invite.email}</div></td>
+              <td>{ROLE_LABEL[invite.role]}</td>
+              <td>{invite.shop_name || "—"}</td>
+              <td className="num">{new Date(invite.expires_at).toLocaleString("en-GB")}</td>
+              <td>
+                <form action={revokeInvitationAction}>
+                  <input type="hidden" name="next" value={next} />
+                  <input type="hidden" name="id" value={invite.id} />
+                  <button className="link-quiet" type="submit">Revoke link</button>
+                </form>
+              </td>
+            </tr>
+          ))}
+          empty="No setup links are waiting."
+          emptyHint="Leaving the password field blank when you create an account sends it here."
         />
       </Card>
     </>

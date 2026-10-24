@@ -89,10 +89,22 @@ export function readFlash(params = {}) {
 export function StatusBadge({ status }) {
   const map = {
     pending: ["badge-warn", "Pending"],
-    paid: ["badge-ok", "Paid"],
-    shipped: ["badge-info", "Shipped"],
+    confirmed: ["badge-info", "Confirmed"],
+    processing: ["badge-info", "Processing"],
+    shipped: ["badge-info", "Out for delivery"],
     delivered: ["badge-ok", "Delivered"],
     cancelled: ["badge-off", "Cancelled"],
+  };
+  const [className, label] = map[status] || ["badge-off", status];
+  return <span className={`badge ${className}`}>{label}</span>;
+}
+
+// Cash-on-Delivery is never "paid online": it is pending until a person collects the notes.
+export function PayBadge({ status }) {
+  const map = {
+    pending: ["badge-warn", "COD pending"],
+    collected: ["badge-ok", "Cash collected"],
+    refunded: ["badge-off", "COD refunded"],
   };
   const [className, label] = map[status] || ["badge-off", status];
   return <span className={`badge ${className}`}>{label}</span>;

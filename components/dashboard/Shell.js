@@ -3,17 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon from "@/components/Icon";
-import { logoutAction } from "@/lib/dashboard-actions";
+import { signOutAction } from "@/lib/auth-actions";
+import { clientSignOut } from "@/lib/firebase/client";
 
 const NAV = [
   { slug: "", label: "Dashboard", icon: "grid", roles: ["superadmin", "admin", "shop"] },
-  { slug: "admins", label: "Admin management", icon: "users", roles: ["superadmin"] },
+  { slug: "admins", label: "Staff & admins", icon: "users", roles: ["superadmin"] },
+  { slug: "customers", label: "Customers", icon: "user", roles: ["superadmin"] },
   { slug: "shops", label: "Shop management", icon: "store", roles: ["superadmin", "admin"] },
   { slug: "products", label: "Products", icon: "box", roles: ["superadmin", "admin", "shop"] },
   { slug: "categories", label: "Categories", icon: "tag", roles: ["superadmin"] },
   { slug: "orders", label: "Orders", icon: "receipt", roles: ["superadmin", "admin", "shop"] },
-  { slug: "inventory", label: "Inventory", icon: "layers", roles: ["superadmin", "admin", "shop"] },
+  { slug: "inventory", label: "Inventory", icon: "layers", roles: ["superadmin", "admin", "shop"], flag: "canManageInventory" },
+  { slug: "delivery", label: "Delivery", icon: "truck", roles: ["superadmin", "admin", "shop"], flag: "canUpdateDelivery" },
+  { slug: "cod", label: "Cash collection", icon: "check", roles: ["superadmin", "admin", "shop"], flag: "canCollectCod" },
   { slug: "reports", label: "Reports", icon: "chart", roles: ["superadmin", "admin", "shop"] },
+  { slug: "activity", label: "Activity log", icon: "shield", roles: ["superadmin"] },
   { slug: "settings", label: "Settings", icon: "gear", roles: ["superadmin", "admin", "shop"] },
 ];
 
@@ -21,7 +26,13 @@ const ROLE_LABEL = { superadmin: "Super Admin", admin: "Admin", shop: "Shop" };
 
 export default function Shell({ base, user, children }) {
   const pathname = usePathname();
-  const links = NAV.filter((item) => item.roles.includes(user.role));
+  // Permission flags come from the verified session row, so a deactivated permission hides the screen.
+  const links = NAV.filter((item) => item.roles.includes(user.role) && (!item.flag || user[item.flag]));
+
+  async function signOut() {
+    await clientSignOut();
+    await signOutAction();
+  }
 
   return (
     <div className="app-shell">
@@ -53,12 +64,10 @@ export default function Shell({ base, user, children }) {
               <Icon name="store" />
               View storefront
             </Link>
-            <form action={logoutAction}>
-              <button type="submit" className="app-nav-link">
-                <Icon name="logout" />
-                Logout
-              </button>
-            </form>
+            <button type="button" className="app-nav-link" onClick={signOut}>
+              <Icon name="logout" />
+              Logout
+            </button>
             <div className="app-signer">
               <strong>{user.name}</strong>
               <span>{user.email}</span>

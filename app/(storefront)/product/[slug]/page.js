@@ -1,19 +1,19 @@
 import { notFound } from "next/navigation";
 import ProductDetail from "@/components/ProductDetail";
-import { getProduct, products } from "@/lib/products";
+import { getCatalogProduct, loadCatalog } from "@/lib/storefront.mjs";
 
 export function generateStaticParams() {
-  return products.map((product) => ({ slug: product.id }));
+  return loadCatalog(true).map((product) => ({ slug: product.id }));
 }
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = getCatalogProduct(slug);
   if (!product) notFound();
 
   return {
     title: product.name,
-    description: `${product.description} Explore ${product.audience.toLowerCase()}’s ${product.category.toLowerCase()} shoes at SOLEIX. Demo storefront; no orders are placed.`,
+    description: `${product.description} Explore ${product.audience.toLowerCase()}’s ${product.category.toLowerCase()} shoes at SOLEIX, with live stock and delivery across Pakistan.`,
     openGraph: {
       title: `${product.name} | SOLEIX`,
       description: product.description,
@@ -24,14 +24,14 @@ export async function generateMetadata({ params }) {
 
 export default async function ProductPage({ params }) {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = getCatalogProduct(slug);
   if (!product) notFound();
 
-  const relatedProducts = products
+  const relatedProducts = loadCatalog()
     .filter((item) => item.id !== product.id)
     .sort((a, b) => {
       const relevance = (item) => Number(item.category === product.category) * 2 + Number(item.audience === product.audience);
-      return relevance(b) - relevance(a) || b.date.localeCompare(a.date);
+      return relevance(b) - relevance(a) || b.dbId - a.dbId;
     })
     .slice(0, 4);
 

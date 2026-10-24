@@ -3,10 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { colorValues, formatPrice } from "@/lib/products";
+import { colorValues, formatPrice, stockFor } from "@/lib/catalog.mjs";
 import Icon from "./Icon";
 import ProductCard from "./ProductCard";
-import { useStore } from "./StoreProvider";
+import { useCatalog, useStore } from "./StoreProvider";
 
 // All views use the same source photograph. The detail views are labelled crops.
 const galleryViews = [
@@ -19,18 +19,27 @@ function imageStyle(view) {
   return { objectFit: "cover", objectPosition: view.position, transform: `scale(${view.scale})`, transformOrigin: view.position };
 }
 
-export default function ProductDetail({ product, relatedProducts = [] }) {
+export default function ProductDetail({ product: listed, relatedProducts = [] }) {
   const { addItem, toggleWishlist, wishlist } = useStore();
+  const { get, settings } = useCatalog();
   const [selectedView, setSelectedView] = useState(0);
-  const [color, setColor] = useState(product.colors[0]);
+  const [color, setColor] = useState(listed.colors[0]);
   const [size, setSize] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState("");
   const [sizeError, setSizeError] = useState(false);
   const firstSize = useRef(null);
-  const outOfStock = product.outOfStock || [];
+  // The prerendered row keeps the first paint complete; once /api/catalog answers the live
+  // stock map wins so sold-out variants and quantity limits match the warehouse.
+  const product = get(listed.id) || listed;
   const view = galleryViews[selectedView];
   const saved = wishlist.includes(product.id);
+  const soldOut = (item) => stockFor(product, item, color) === 0;
+  const fewest = Math.min(...Object.values(product.stock || {}).filter((qty) => qty > 0), 10);
+  const scarce = fewest <= (product.lowStock || 3);
+  const ceiling = size ? Math.min(10, stockFor(product, size, color)) : 10;
+  const freeOver = Number(settings.freeDeliveryOver) || 0;
+  const deliveryFee = Number(settings.deliveryFee) || 0;
 
   function addToBag(event) {
     event.preventDefault();
@@ -40,15 +49,15 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
       firstSize.current?.focus();
       return;
     }
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
-      setError("Choose a quantity between 1 and 10.");
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > ceiling) {
+      setError(`Choose a quantity between 1 and ${ceiling}.`);
       return;
     }
     if (addItem(product.id, size, color, quantity)) {
       setError("");
       setSizeError(false);
     } else {
-      setError("We couldn’t add this quantity. Your bag can hold up to 10 of each size and colour combination; check your bag or choose a smaller quantity.");
+      setError(`We couldn’t add this quantity. Only ${stockFor(product, size, color)} of EU ${size} in ${color} are in stock, with a bag limit of 10 per option.`);
     }
   }
 
@@ -89,11 +98,11 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
             <span className="text-2xl font-semibold">{formatPrice(product.price)}</span>
             {product.originalPrice && <del className="muted text-lg"><span className="sr-only">Original price: </span>{formatPrice(product.originalPrice)}</del>}
           </div>
-          <p className="muted mb-5 text-xs">No customer reviews yet. This is a demo product.</p>
+          <p className="muted mb-5 text-xs">No customer reviews yet.</p>
           <p className="mb-6 leading-relaxed">{product.description}</p>
           <div className="notice mb-6" role="note">
-            <strong className="block">Storefront demo — no orders are placed.</strong>
-            <p className="mt-1 text-sm">Explore the sample collection and try the bag. No payment is collected.</p>
+            <strong className="block">{product.totalStock ? "Live stock, real checkout." : "Sold out in every size and colour."}</strong>
+            <p className="mt-1 text-sm">{product.totalStock ? "The availability below comes from our current inventory. Add your pair to the bag and check out when you are ready." : "Choose another colourway, or save this pair and check back soon."}</p>
           </div>
 
           <form onSubmit={addToBag} noValidate>
@@ -101,22 +110,22 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
               <legend className="option-label mb-3 text-sm font-semibold">Colour: <span className="font-normal">{color}</span></legend>
               <div className="flex flex-wrap gap-2">
                 {product.colors.map((item) => (
-                  <button key={item} type="button" className={`colour-option ${color === item ? "active" : ""}`} aria-pressed={color === item} aria-label={`Colour ${item}`} onClick={() => { setColor(item); if (!sizeError) setError(""); }}>
+                  <button key={item} type="button" className={`colour-option ${color === item ? "active" : ""}`} aria-pressed={color === item} aria-label={`Colour ${item}`} onClick={() => { setColor(item); if (size && stockFor(product, size, item) === 0) setSize(null); if (!sizeError) setError(""); }}>
                     <span className="color-dot" style={{ backgroundColor: colorValues[item] }} aria-hidden="true" />{item}
                   </button>
                 ))}
               </div>
-              <p className="sample-note muted mt-3 text-xs leading-relaxed">Gallery shows {product.colors[0]}; other colourways are illustrative sample options.</p>
+              <p className="sample-note muted mt-3 text-xs leading-relaxed">Gallery shows {product.colors[0]}; other colourways use the same photograph.</p>
             </fieldset>
 
             <fieldset className="mb-3" aria-invalid={sizeError} aria-describedby={sizeError ? "product-selection-error" : "product-size-hint"}>
               <legend className="option-label mb-3 text-sm font-semibold">Select size <span className="muted font-normal">EU · required{size ? ` · ${size} selected` : ""}</span></legend>
               <div className="size-grid">
                 {product.sizes.map((item, index) => (
-                  <button key={item} ref={index === 0 ? firstSize : undefined} type="button" className={`size-button ${size === item ? "active" : ""} ${outOfStock.includes(item) ? "is-out" : ""}`} disabled={outOfStock.includes(item)} aria-pressed={size === item} aria-label={`EU ${item}${outOfStock.includes(item) ? " — sold out" : ""}`} title={outOfStock.includes(item) ? "Sold out in this size" : undefined} onClick={() => { setSize(item); setSizeError(false); setError(""); }}>EU {item}</button>
+                  <button key={item} ref={index === 0 ? firstSize : undefined} type="button" className={`size-button ${size === item ? "active" : ""} ${soldOut(item) ? "is-out" : ""}`} disabled={soldOut(item)} aria-pressed={size === item} aria-label={`EU ${item}${soldOut(item) ? " — sold out" : ""}`} title={soldOut(item) ? `Sold out in ${color}` : undefined} onClick={() => { setSize(item); setSizeError(false); setError(""); }}>EU {item}</button>
                 ))}
               </div>
-              <p id="product-size-hint" className="muted mt-2 text-xs">Only the listed EU sizes are available for this sample.{product.lowStock ? ` Just ${product.lowStock} pairs left in the size run.` : ""}{outOfStock.length ? " Struck-through sizes are sold out." : ""}</p>
+              <p id="product-size-hint" className="muted mt-2 text-xs">Only the listed EU sizes are available for this pair.{scarce ? ` Just ${fewest} pairs left in the size run.` : ""}{product.sizes.some(soldOut) ? " Struck-through sizes are sold out." : ""}</p>
             </fieldset>
 
             <details className="size-guide mb-6 border-b border-black/10 pb-4">
@@ -124,7 +133,7 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
               <div className="muted mt-2 space-y-2 text-sm leading-relaxed">
                 <p>All sizes on SOLEIX are European (EU) sizes, not UK or US sizes. Start with the EU size printed inside a well-fitting pair of your own shoes.</p>
                 <p>Measure both feet while standing, wearing the socks you plan to use. Use the longer foot when comparing a manufacturer’s size chart.</p>
-                <p>This demo does not include a verified centimetre, UK or US conversion chart. Fit varies by style; these sample options are not a fit guarantee.</p>
+                <p>This storefront does not include a verified centimetre, UK or US conversion chart. Fit varies by style; these size options are not a fit guarantee.</p>
                 <p>Available for {product.name}: {product.sizes.map((item) => `EU ${item}`).join(", ")}.</p>
               </div>
             </details>
@@ -133,13 +142,13 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
               <label htmlFor="product-quantity" className="text-sm font-semibold">Quantity</label>
               <div className="quantity-control">
                 <button type="button" aria-label="Decrease quantity" disabled={quantity <= 1} onClick={() => setQuantity(Math.max(1, Number(quantity) - 1))}><Icon name="minus" size={16} /></button>
-                <input id="product-quantity" type="number" min="1" max="10" step="1" inputMode="numeric" value={quantity} aria-describedby="product-quantity-hint" onChange={(event) => {
+                <input id="product-quantity" type="number" min="1" max={ceiling} step="1" inputMode="numeric" value={quantity} aria-describedby="product-quantity-hint" onChange={(event) => {
                   const value = event.target.value;
-                  setQuantity(value === "" ? "" : Math.max(1, Math.min(10, Math.trunc(Number(value)))));
+                  setQuantity(value === "" ? "" : Math.max(1, Math.min(ceiling, Math.trunc(Number(value)))));
                 }} onBlur={() => { if (quantity === "") setQuantity(1); }} />
-                <button type="button" aria-label="Increase quantity" disabled={quantity >= 10} onClick={() => setQuantity(Math.min(10, Number(quantity) + 1))}><Icon name="plus" size={16} /></button>
+                <button type="button" aria-label="Increase quantity" disabled={quantity >= ceiling} onClick={() => setQuantity(Math.min(ceiling, Number(quantity) + 1))}><Icon name="plus" size={16} /></button>
               </div>
-              <span id="product-quantity-hint" className="muted text-xs">Maximum 10 per option</span>
+              <span id="product-quantity-hint" className="muted text-xs">Maximum {ceiling} per option</span>
             </div>
 
             {error && <p id="product-selection-error" className="form-error mb-4 text-sm" style={{ color: "#a12e26" }} role="alert">{error}</p>}
@@ -163,12 +172,12 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
               </div>
             </details>
             <details className="border-b border-black/10 py-4">
-              <summary className="cursor-pointer text-sm font-semibold"><span className="inline-flex items-center gap-2"><Icon name="truck" size={18} />Delivery — sample terms</span></summary>
-              <p className="muted mt-3 text-sm leading-relaxed">Free delivery on merchandise totals of {formatPrice(15000)} or more; otherwise {formatPrice(250)}. Estimated delivery is 3–5 business days. These are illustrative Pakistan delivery terms only: this storefront demo does not place or fulfil orders.</p>
+              <summary className="cursor-pointer text-sm font-semibold"><span className="inline-flex items-center gap-2"><Icon name="truck" size={18} />Delivery — {freeOver ? `free over ${formatPrice(freeOver)}` : "quoted at checkout"}</span></summary>
+              <p className="muted mt-3 text-sm leading-relaxed">Free delivery on merchandise totals of {formatPrice(freeOver)} or more; otherwise {formatPrice(deliveryFee)}. Estimated delivery is 3–5 business days across Pakistan.</p>
             </details>
             <details className="border-b border-black/10 py-4">
-              <summary className="cursor-pointer text-sm font-semibold"><span className="inline-flex items-center gap-2"><Icon name="return" size={18} />Returns — sample terms</span></summary>
-              <p className="muted mt-3 text-sm leading-relaxed">The sample policy allows returns within 14 days of delivery for unworn shoes in their original packaging. No real purchases or returns are processed through this demo.</p>
+              <summary className="cursor-pointer text-sm font-semibold"><span className="inline-flex items-center gap-2"><Icon name="return" size={18} />Returns — 14 days</span></summary>
+              <p className="muted mt-3 text-sm leading-relaxed">Returns are accepted within 14 days of delivery for unworn shoes in their original packaging.</p>
             </details>
           </div>
         </div>
@@ -180,7 +189,7 @@ export default function ProductDetail({ product, relatedProducts = [] }) {
             <div><p className="eyebrow">KEEP YOUR ROTATION FRESH</p><h2 id="related-products-heading" className="section-heading">You might also like.</h2></div>
             <Link href="/shop" className="text-link inline-flex items-center gap-2">Explore all pairs<Icon name="arrow" size={17} /></Link>
           </div>
-          <div className="catalog-grid">{relatedProducts.slice(0, 4).map((item) => <ProductCard key={item.id} product={item} />)}</div>
+          <div className="catalog-grid">{relatedProducts.slice(0, 4).map((item) => <ProductCard key={item.id} product={get(item.id) || item} />)}</div>
         </section>
       )}
     </section>

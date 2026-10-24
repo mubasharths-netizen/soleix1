@@ -8,12 +8,15 @@
     "start": "next start",
     "lint": "eslint",
     "setup:admin": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/setup-admin.mjs",
+    "check:firebase": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/check-firebase.mjs",
     "seed:catalog": "node scripts/seed-catalog.mjs",
     "seed:demo": "node scripts/seed-demo-data.mjs",
     "test:auth": "node --env-file-if-exists=.env.local tests/auth.spec.mjs",
     "test:account": "node tests/account-nav.spec.mjs"
   },
   "dependencies": {
+    "firebase": "^13.1.0",
+    "firebase-admin": "^14.5.0",
     "framer-motion": "^14.6.0",
     "next": "16.4.2",
     "react": "19.3.0",

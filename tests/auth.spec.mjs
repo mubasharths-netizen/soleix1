@@ -6,10 +6,11 @@ const check = (name, ok, detail = "") => { results.push({ name, ok }); console.l
 
 async function login(page, email, password) {
   await page.goto(`${base}/login`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#login-email", { timeout: 20000 });
   await page.fill("#login-email", email);
   await page.fill("#login-password", password);
   await page.keyboard.press("Enter");
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 20000 });
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 40000 });
 }
 
 async function expectRedirectAway(page, path) {
@@ -91,7 +92,7 @@ try {
   // 7. Logout ends the session
   await pageB.goto(`${base}/admin`, { waitUntil: "domcontentloaded" });
   await pageB.waitForTimeout(1200);
-  await pageB.locator('form button:has-text("Logout")').first().click();
+  await pageB.locator('button:has-text("Logout")').first().click();
   await pageB.waitForURL(/\/login/, { timeout: 15000 }).catch(() => {});
   await pageB.goto(`${base}/admin`, { waitUntil: "commit" });
   check("Logout clears Admin session", pageB.url().includes("/login"), pageB.url());
@@ -106,10 +107,64 @@ try {
   await pageG.goto(`${base}/shop`, { waitUntil: "domcontentloaded" });
   check("Catalog renders products", (await pageG.locator(".product-card").count()) > 0);
   await pageG.goto(`${base}/login`, { waitUntil: "domcontentloaded" });
+  await pageG.waitForTimeout(600);
   const loginText = (await pageG.locator("body").innerText()).toLowerCase();
-  const googleButtons = await pageG.locator('a.auth-google').count();
-  check("Login page has no signup/forgot extras", !/sign up|forgot|facebook|register/.test(loginText) && googleButtons === 0, `google buttons: ${googleButtons}`);
+  const googleButtons = await pageG.locator(".auth-google").count();
+  const firebaseOn = Boolean(process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+  check("Login offers forgot password + sign up, no fake providers", /forgot password/.test(loginText) && /create an account/.test(loginText) && !/facebook|demo login|twitter/.test(loginText));
+  check("Google button matches Firebase configuration", googleButtons === (firebaseOn ? 1 : 0), `buttons: ${googleButtons}, firebase configured: ${firebaseOn}`);
+  const eye = pageG.locator(".auth-eye");
+  await pageG.fill("#login-password", "secret123");
+  await eye.click();
+  check("Show/hide password toggles the field", (await pageG.locator("#login-password").getAttribute("type")) === "text");
+  await eye.click();
+  check("Password hides again", (await pageG.locator("#login-password").getAttribute("type")) === "password");
+
+  await pageG.goto(`${base}/signup`, { waitUntil: "domcontentloaded" });
+  await pageG.waitForTimeout(500);
+  const signupFields = await pageG.locator("#signup-name, #signup-email, #signup-password, #signup-confirm").count();
+  check("Sign Up page has all four fields", signupFields === 4, `found ${signupFields}`);
+  await pageG.fill("#signup-email", "not-an-email");
+  await pageG.fill("#signup-password", "short");
+  await pageG.fill("#signup-confirm", "different");
+  await pageG.locator('button[type="submit"]').click();
+  await pageG.waitForTimeout(700);
+  const fieldErrors = await pageG.locator(".auth-field-error").count();
+  check("Sign Up blocks invalid input before calling Firebase", fieldErrors >= 3, `${fieldErrors} field errors shown`);
+
+  await pageG.goto(`${base}/forgot-password`, { waitUntil: "domcontentloaded" });
+  check("Forgot Password page offers a reset link form", (await pageG.locator("#reset-email").count()) === 1 && (await pageG.locator("body").innerText()).toLowerCase().includes("reset"));
+
+  await pageG.goto(`${base}/account`, { waitUntil: "commit" });
+  await pageG.waitForTimeout(800);
+  check("Guest /account → /login?next=/account", pageG.url().includes("/login") && pageG.url().includes("account"), pageG.url());
+
+  await pageG.goto(`${base}/`, { waitUntil: "domcontentloaded" });
+  await pageG.waitForTimeout(900);
+  const headerGuest = await pageG.locator(".auth-nav").innerText();
+  check("Header shows Log in and Sign up when signed out", /log in/i.test(headerGuest) && /sign up/i.test(headerGuest), headerGuest.replace(/\s+/g, " "));
   check("No console errors on storefront pages", consoleErrors.length === 0, consoleErrors.join(" | ").slice(0, 300));
+
+  // 9. Signed-in header menu
+  const pageH = await (await browser.newContext()).newPage();
+  await login(pageH, "manager@soleix.local", "SoleixManager!2026");
+  await pageH.goto(`${base}/`, { waitUntil: "domcontentloaded" });
+  await pageH.waitForTimeout(1000);
+  const menu = pageH.locator(".account-menu");
+  check("Header shows the account menu after login", (await menu.count()) === 1);
+  await menu.locator(".account-trigger").click();
+  await pageH.waitForTimeout(400);
+  const popText = await pageH.locator(".account-pop").innerText();
+  check("Account menu lists profile, dashboard and sign out", /my account/i.test(popText) && /staff dashboard/i.test(popText) && /sign out/i.test(popText), popText.replace(/\s+/g, " "));
+  await pageH.goto(`${base}/account`, { waitUntil: "domcontentloaded" });
+  await pageH.waitForTimeout(1200);
+  const accountText = await pageH.locator(".account-page").innerText();
+  check("Signed-in /account shows the real profile", /manager@soleix\.local/.test(accountText) && /Admin/.test(accountText), accountText.split("\n").slice(0, 3).join(" "));
+  await pageH.locator('button:has-text("Logout")').first().click();
+  await pageH.waitForTimeout(1200);
+  await pageH.goto(`${base}/account`, { waitUntil: "commit" });
+  await pageH.waitForTimeout(800);
+  check("Logout clears the account session", pageH.url().includes("/login"), pageH.url());
 } finally {
   await browser.close();
 }

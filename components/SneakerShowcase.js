@@ -4,14 +4,16 @@ import { useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useMotionValue, useSpring, useTransform, useReducedMotion } from "framer-motion";
-import { getProduct, formatPrice } from "@/lib/products";
+import { formatPrice } from "@/lib/catalog.mjs";
 import Reveal from "./Reveal";
 import Icon from "./Icon";
+import { useCatalog } from "./StoreProvider";
 
 const finePointer = () => typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
 export default function SneakerShowcase() {
-  const product = getProduct("velocity-01");
+  const { get } = useCatalog();
+  const product = get("velocity-01");
   const reduce = useReducedMotion();
   const stageRef = useRef(null);
   const px = useMotionValue(0);
@@ -40,17 +42,19 @@ export default function SneakerShowcase() {
           <p className="eyebrow">THE VELOCITY 01, IN THE ROUND</p>
           <h2 id="showcase-title" className="section-heading">SEE IT FROM<br />EVERY ANGLE.</h2>
           <p className="showcase-description">Sculpted cushioning, a breathable mesh upper and a silhouette that moves with you. Give it a hover — it likes the attention.</p>
-          <div className="showcase-facts"><span>{product.audience}&apos;s {product.category}</span><span>EU {product.sizes[0]}–{product.sizes[product.sizes.length - 1]}</span><span>{formatPrice(product.price)}</span></div>
-          <Link href={`/product/${product.id}`} className="button button-dark">SHOP VELOCITY 01 <Icon name="arrow" size={17} /></Link>
+          {product ? <>
+            <div className="showcase-facts"><span>{product.audience}&apos;s {product.category}</span><span>EU {product.sizes[0]}–{product.sizes[product.sizes.length - 1]}</span><span>{formatPrice(product.price)}</span></div>
+            <Link href={`/product/${product.id}`} className="button button-dark">SHOP VELOCITY 01 <Icon name="arrow" size={17} /></Link>
+          </> : <p className="muted" role="status">Loading this pair…</p>}
         </Reveal>
         <div className="showcase-stage" ref={stageRef} onMouseMove={onMove} onMouseLeave={onLeave}>
           <motion.span className="showcase-shadow" aria-hidden="true" style={{ x: shadowX, y: shadowY }} />
-          <div className="showcase-float">
+          {product && <div className="showcase-float">
             <motion.div className="showcase-tilt" style={{ rotateX, rotateY }}>
               <Image src={product.image} alt={`${product.name} sneaker floating on a neutral backdrop`} width={760} height={760} priority={false} sizes="(max-width: 900px) 92vw, 46vw" />
               <motion.span className="showcase-glare" aria-hidden="true" style={{ left: glareX }} />
             </motion.div>
-          </div>
+          </div>}
           <span className="showcase-badge">VOL. 01 / IVORY</span>
         </div>
       </div>

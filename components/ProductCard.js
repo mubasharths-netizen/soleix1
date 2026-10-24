@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { colorValues, formatPrice } from "@/lib/products";
+import { colorValues, formatPrice, stockFor } from "@/lib/catalog.mjs";
 import { useStore } from "./StoreProvider";
 import Icon from "./Icon";
 import Modal from "./Modal";
@@ -18,7 +18,9 @@ export default function ProductCard({ product }) {
   const [added, setAdded] = useState(false);
   const addedTimer = useRef(null);
   const saved = wishlist.includes(product.id);
-  const outOfStock = product.outOfStock || [];
+  const soldOut = (item) => stockFor(product, item, color) === 0;
+  const fewest = Math.min(...Object.values(product.stock || {}).filter((qty) => qty > 0), 10);
+  const scarce = fewest <= (product.lowStock || 3);
 
   useEffect(() => () => clearTimeout(addedTimer.current), []);
 
@@ -36,7 +38,7 @@ export default function ProductCard({ product }) {
     <div className="product-card-image">
       <Link href={`/product/${product.id}`} aria-label={`View ${product.name}`}><Image src={product.image} alt={`${product.name} in ${product.colors[0]}`} fill sizes="(max-width: 600px) 50vw, (max-width: 1100px) 33vw, 25vw" className="product-photo" />{product.altImage && <Image src={product.altImage} alt="" aria-hidden="true" fill sizes="(max-width: 600px) 50vw, (max-width: 1100px) 33vw, 25vw" className="product-photo alt" />}</Link>
       {product.badge && <span className={`product-badge ${product.badge === "SALE" ? "sale" : ""}`}>{product.badge}</span>}
-      {product.lowStock && <span className="stock-chip">Only {product.lowStock} left</span>}
+      {scarce && <span className="stock-chip">Only {fewest} left</span>}
       <motion.button className={`favorite-button ${saved ? "is-saved" : ""}`} onClick={() => toggleWishlist(product.id)} aria-pressed={saved} aria-label={`${saved ? "Remove" : "Save"} ${product.name} ${saved ? "from" : "to"} favourites`} animate={saved ? { scale: [1, 1.35, 1] } : { scale: 1 }} transition={{ duration: 0.35 }}><Icon name="heart" size={19} fill={saved ? "currentColor" : "none"} /></motion.button>
       <motion.button className="quick-add" onClick={() => setQuickAdd(true)} aria-label={`Add ${product.name} to cart`} whileTap={{ scale: 0.95 }}>Add to Cart <Icon name="plus" size={16} /></motion.button>
       <AnimatePresence>
@@ -55,10 +57,10 @@ export default function ProductCard({ product }) {
     <Modal open={quickAdd} onClose={() => setQuickAdd(false)} title="Make them yours">
       <div className="quick-product"><Image src={product.image} alt={product.name} width={110} height={110} /><div><p className="eyebrow">{product.category}</p><h3>{product.name}</h3><p>{formatPrice(product.price)}</p></div></div>
       <p className="option-label">Colour: {color}</p>
-      <div className="flex flex-wrap gap-2">{product.colors.map((item) => <button key={item} className={`colour-option ${item === color ? "active" : ""}`} onClick={() => setColor(item)} aria-label={`Colour ${item}`} aria-pressed={item === color}><span className="color-dot" style={{ background: colorValues[item] }} />{item}</button>)}</div>
+      <div className="flex flex-wrap gap-2">{product.colors.map((item) => <button key={item} className={`colour-option ${item === color ? "active" : ""}`} onClick={() => { setColor(item); if (size && stockFor(product, size, item) === 0) setSize(null); }} aria-label={`Colour ${item}`} aria-pressed={item === color}><span className="color-dot" style={{ background: colorValues[item] }} />{item}</button>)}</div>
       <p className="option-label">Select size <span className="muted">EU</span> {size && <span className="size-selected">EU {size} selected</span>}</p>
-      <div className="size-grid">{product.sizes.map((item) => <button key={item} className={`size-button ${item === size ? "active" : ""} ${outOfStock.includes(item) ? "is-out" : ""}`} disabled={outOfStock.includes(item)} onClick={() => { setSize(item); setError(""); }} aria-pressed={item === size} title={outOfStock.includes(item) ? "Sold out in this size" : undefined}>EU {item}</button>)}</div>
-      {outOfStock.length > 0 && <p className="stock-note">Struck-through sizes are sold out.</p>}
+      <div className="size-grid">{product.sizes.map((item) => <button key={item} className={`size-button ${item === size ? "active" : ""} ${soldOut(item) ? "is-out" : ""}`} disabled={soldOut(item)} onClick={() => { setSize(item); setError(""); }} aria-pressed={item === size} title={soldOut(item) ? "Sold out in this size" : undefined}>EU {item}</button>)}</div>
+      {product.sizes.some(soldOut) && <p className="stock-note">Struck-through sizes are sold out.</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
       <p className="sample-note">Gallery shows {product.colors[0]}. Other colours are illustrative sample options.</p>
       <button className="button button-dark w-full" onClick={add}>Add to Bag <Icon name="bag" size={18} /></button>

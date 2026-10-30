@@ -28,6 +28,10 @@ function Catalog({ params }) {
   const priceCeiling = products.reduce((max, product) => Math.max(max, product.price), 0);
   const audience = params.get("audience") || "";
   const collection = params.get("collection") || "";
+  const shop = params.get("shop") || "";
+  const shops = [...new Map(products.map((product) => [String(product.shopId), product.shopName])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1]));
+  const shopName = shops.find(([id]) => id === shop)?.[1] || "";
   const [query, setQuery] = useState(params.get("q") || "");
   const [selectedCategories, setSelectedCategories] = useState(() => params.getAll("category"));
   const [selectedSizes, setSelectedSizes] = useState(() => params.getAll("size"));
@@ -47,6 +51,7 @@ function Catalog({ params }) {
     return (
       (!audience || product.audience === audience) &&
       (!collection || product.collections.includes(collection)) &&
+      (!shop || String(product.shopId) === shop) &&
       searchWords.every((word) => searchable.includes(word)) &&
       (!selectedCategories.length || selectedCategories.includes(product.category)) &&
       (!selectedSizes.length || product.sizes.some((size) => selectedSizes.includes(String(size)))) &&
@@ -97,12 +102,13 @@ function Catalog({ params }) {
     ...(query ? [{ key: "q", value: query, label: `Search: ${query}` }] : []),
     ...(audience ? [{ key: "audience", value: audience, label: audience, href: collection ? `/shop?collection=${encodeURIComponent(collection)}` : "/shop" }] : []),
     ...(collection ? [{ key: "collection", value: collection, label: collection, href: audience ? `/shop?audience=${audience}` : "/shop" }] : []),
+    ...(shopName ? [{ key: "shop", value: shop, label: `From ${shopName}`, href: audience ? `/shop?audience=${audience}` : collection ? `/shop?collection=${encodeURIComponent(collection)}` : "/shop" }] : []),
     ...selectedCategories.map((value) => ({ key: "category", value, label: value })),
     ...selectedSizes.map((value) => ({ key: "size", value, label: `EU ${value}` })),
     ...selectedColors.map((value) => ({ key: "color", value, label: value })),
     ...(maxPrice < priceCeiling ? [{ key: "max-price", value: String(maxPrice), label: `Up to ${formatPrice(maxPrice)}` }] : []),
   ];
-  const heading = collection ? `${collection}${audience ? ` · ${audience}` : ""}` : audience ? `${audience}’s rotation` : query.trim() ? "Find your next pair." : "All sneakers.";
+  const heading = shopName ? `${shopName}’s shelves.` : collection ? `${collection}${audience ? ` · ${audience}` : ""}` : audience ? `${audience}’s rotation` : query.trim() ? "Find your next pair." : "All sneakers.";
 
   function removeFilter(filter) {
     if (filter.href) return;
@@ -180,6 +186,15 @@ function Catalog({ params }) {
             <div className="flex flex-wrap gap-2">
               <Link href="/shop" className={`size-button ${!audience && !collection ? "active" : ""}`}>Everyone</Link>
               {audiences.map((item) => <Link key={item} href={`/shop?audience=${item}`} className={`size-button ${audience === item ? "active" : ""}`} aria-current={audience === item ? "page" : undefined}>{item}</Link>)}
+            </div>
+          </nav>
+
+          <nav className="filter-group" aria-label="Shop by location">
+            <h3 className="mb-3 text-sm font-semibold">Sold by</h3>
+            <div className="flex flex-wrap gap-2">
+              {shops.map(([id, name]) => (
+                <Link key={id} href={`/shop?shop=${id}`} className={`size-button ${shop === id ? "active" : ""}`} aria-current={shop === id ? "page" : undefined}>{name}</Link>
+              ))}
             </div>
           </nav>
 

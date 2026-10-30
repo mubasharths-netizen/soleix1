@@ -40,19 +40,13 @@ function EyeIcon({ shown }) {
   );
 }
 
-// Firebase errors meaning "Firebase could not authenticate this identity" — including a bad or
-// unreachable project config — so staff records in SQLite are still tried. Login only.
-const STAFF_FALLBACK_CODES = [
+// Firebase answers these when the email/password pair simply does not exist in its project. After
+// SQLite has already refused the same pair, the neutral "credentials do not match" message is kept.
+const CREDENTIAL_ERROR_CODES = [
   "auth/user-not-found",
   "auth/wrong-password",
   "auth/invalid-login-credentials",
   "auth/invalid-credential",
-  "auth/configuration-not-found",
-  "auth/operation-not-allowed",
-  "auth/invalid-api-key",
-  "auth/api-key-not-valid.-please-pass-a-valid-api-key.",
-  "auth/network-request-failed",
-  "auth/app-deleted",
 ];
 
 function friendlyAuthError(error) {
@@ -129,14 +123,18 @@ export default function AuthForm({ mode, next }) {
     return Object.keys(found).length === 0;
   }
 
-  // Staff accounts live in SQLite. Used directly when Firebase is not configured, and as a
-  // fallback when Firebase does not recognise an email that may still be a staff login.
-  async function staffSignIn(email) {
+  // Staff accounts live in SQLite and are always tried before Firebase, so a team sign-in never
+  // depends on the Firebase project being reachable or correctly configured.
+  async function staffAttempt(email) {
     const form = new FormData();
     form.set("email", email);
     form.set("password", values.password);
     if (next) form.set("next", next);
-    const result = await loginAction(null, form);
+    return loginAction(null, form);
+  }
+
+  async function staffSignIn(email) {
+    const result = await staffAttempt(email);
     if (result?.error) setError(result.error);
   }
 
@@ -156,18 +154,29 @@ export default function AuthForm({ mode, next }) {
         await staffSignIn(email);
         return;
       }
+      if (mode === "signup") {
+        try {
+          const idToken = await finishSignUp({ email, password: values.password, fullName });
+          const result = await firebaseAuthAction({ idToken, next, fullName: fullName || undefined });
+          if (result?.error) setError(result.error);
+        } catch (authError) {
+          const message = friendlyAuthError(authError);
+          if (authError.code === "auth/email-already-in-use" || authError.code === "auth/invalid-email") setFieldErrors((c) => ({ ...c, email: message }));
+          else if (authError.code === "auth/weak-password") setFieldErrors((c) => ({ ...c, password: message }));
+          else setError(message);
+        }
+        return;
+      }
+      // Login: SQLite first. Asking Firebase for a staff email would answer 400 on every sign-in,
+      // so the customer lookup only runs once the staff records have refused the pair.
+      const staff = await staffAttempt(email);
+      if (!staff?.error) return;
       try {
-        const idToken = mode === "signup"
-          ? await finishSignUp({ email, password: values.password, fullName })
-          : await signInWithPassword({ email, password: values.password });
+        const idToken = await signInWithPassword({ email, password: values.password });
         const result = await firebaseAuthAction({ idToken, next, fullName: fullName || undefined });
         if (result?.error) setError(result.error);
       } catch (authError) {
-        const message = friendlyAuthError(authError);
-        if (authError.code === "auth/email-already-in-use" || authError.code === "auth/invalid-email") setFieldErrors((c) => ({ ...c, email: message }));
-        else if (authError.code === "auth/weak-password") setFieldErrors((c) => ({ ...c, password: message }));
-        else if (mode === "login" && STAFF_FALLBACK_CODES.includes(authError.code)) await staffSignIn(email);
-        else setError(message);
+        setError(CREDENTIAL_ERROR_CODES.includes(authError.code) ? staff.error : friendlyAuthError(authError));
       }
     } finally {
       setBusy("");

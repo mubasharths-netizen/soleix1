@@ -67,7 +67,8 @@ export default function DeliveryView({ user, base, next, flash }) {
                         <option value="">Unassigned</option>
                         {user.role !== "superadmin" && <option value={user.id}>Myself</option>}
                         {staff
-                          .filter((entry) => entry.shop_id === row.shop_id || user.role === "superadmin")
+                          // The server refuses a rider from another shop, so only same-shop staff are offered.
+                          .filter((entry) => entry.shop_id === row.shop_id || entry.id === user.id)
                           .map((entry) => (
                             <option key={entry.id} value={entry.id}>
                               {entry.name}

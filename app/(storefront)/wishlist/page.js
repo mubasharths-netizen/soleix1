@@ -1,13 +1,24 @@
-"use client";
-
 import Link from "next/link";
-import { useCatalog, useStore } from "@/components/StoreProvider";
-import ProductCard from "@/components/ProductCard";
-import Icon from "@/components/Icon";
+import JsonLd, { breadcrumb } from "@/components/JsonLd";
+import WishlistGrid from "@/components/WishlistGrid";
+
+export const metadata = {
+  title: "Your favourites",
+  description: "The pairs you saved on SOLEIX. Favourites are kept in this browser, so you can come back to them any time.",
+  alternates: { canonical: "/wishlist" },
+};
 
 export default function WishlistPage() {
-  const { wishlist, ready } = useStore();
-  const { products, ready: catalogReady } = useCatalog();
-  const saved = products.filter((product) => wishlist.includes(product.id));
-  return <section className="section page-shell"><p className="eyebrow">KEEP THE GOOD ONES CLOSE</p><h1 className="page-title">YOUR FAVOURITES.</h1><p className="page-intro">A little inspiration for your next move. Saved on this device.</p>{!ready || !catalogReady ? <p role="status">Loading your favourites…</p> : saved.length ? <div className="product-grid">{saved.map((product) => <ProductCard product={product} key={product.id} />)}</div> : <div className="empty-state"><span className="empty-icon"><Icon name="heart" size={36} /></span><h2>Room for a new favourite.</h2><p>Tap the heart on a pair you love. We&apos;ll keep it here for you.</p><Link href="/shop" className="button button-dark">Find your pair <Icon name="arrow" size={18} /></Link></div>}</section>;
+  return (
+    <section className="section page-shell wishlist-page">
+      <JsonLd data={breadcrumb([{ name: "Home", href: "/" }, { name: "Favourites", href: "/wishlist" }])} />
+      <nav className="breadcrumb" aria-label="Breadcrumb">
+        <Link href="/">Home</Link><span aria-hidden="true">/</span><span aria-current="page">Favourites</span>
+      </nav>
+      <p className="eyebrow">KEEP THE GOOD ONES CLOSE</p>
+      <h1 className="page-title">YOUR FAVOURITES.</h1>
+      <p className="page-intro">A little inspiration for your next move.</p>
+      <WishlistGrid />
+    </section>
+  );
 }

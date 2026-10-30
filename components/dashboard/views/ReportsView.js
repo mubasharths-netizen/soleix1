@@ -1,24 +1,27 @@
 import { Card, EmptyState, PageHead, Stat, StatusBadge, Table } from "@/components/dashboard/Bits";
-import { listShops, money, salesSummary } from "@/lib/queries.mjs";
+import { codSummary, listShops, money, salesSummary } from "@/lib/queries.mjs";
 import { shopIdsFor } from "@/lib/session.mjs";
 
 export default function ReportsView({ user }) {
   const ids = shopIdsFor(user);
   const report = salesSummary(ids);
+  const cod = codSummary(ids);
   const shops = listShops(user.role === "superadmin" ? null : ids);
 
   return (
     <>
       <PageHead
         title="Reports"
-        subtitle="Aggregated directly from the orders and order_items tables. Revenue counts paid, shipped and delivered orders only."
+        subtitle="Aggregated directly from the orders and order_items tables. Revenue counts orders from Confirmed through Delivered and excludes cancellations."
       />
 
       <div className="stat-grid">
-        <Stat label="Revenue" value={money(report.revenue)} hint="Confirmed orders" />
+        <Stat label="Revenue booked" value={money(report.revenue)} hint="Server-recorded order totals" />
         <Stat label="Units sold" value={report.units} hint="Across all order lines" />
         <Stat label="Orders" value={report.orders} hint="All statuses" />
         <Stat label="Average order" value={money(report.orders ? report.revenue / report.orders : 0)} hint="Revenue ÷ orders" />
+        <Stat label="Cash collected" value={money(cod.collected)} hint={`${cod.collectedOrders} order${cod.collectedOrders === 1 ? "" : "s"} confirmed by staff`} />
+        <Stat label="Cash outstanding" value={money(cod.outstanding)} hint="Delivered or on the road, unpaid" />
       </div>
 
       <Card title="Sales by shop">
@@ -84,7 +87,7 @@ export default function ReportsView({ user }) {
         />
       </Card>
 
-      <Card title="Low stock watchlist" description="Three units or fewer in a size/colour line.">
+      <Card title="Low stock watchlist" description="Size and colour lines at or below each product's reorder level.">
         <Table
           columns={["Product", "Size", "Colour", "Left"]}
           rows={report.lowStock.map((row, index) => (
@@ -98,7 +101,7 @@ export default function ReportsView({ user }) {
             </tr>
           ))}
           empty="Nothing low on stock."
-          emptyHint="Lines appear here as soon as quantities drop to three or below."
+          emptyHint="Lines appear here as soon as their quantity reaches the product's reorder level."
         />
       </Card>
     </>

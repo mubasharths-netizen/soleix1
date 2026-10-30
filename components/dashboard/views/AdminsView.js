@@ -1,6 +1,6 @@
-import { headers } from "next/headers";
 import { Card, Notice, PageHead, Table } from "@/components/dashboard/Bits";
 import Icon from "@/components/Icon";
+import SetupLink from "@/components/dashboard/SetupLink";
 import { listShops, listUsers, listAdminShops, db } from "@/lib/queries.mjs";
 import { pendingInvitations } from "@/lib/mutations.mjs";
 import { revokeInvitationAction, saveUserAction, toggleUserAction } from "@/lib/dashboard-actions";
@@ -10,26 +10,24 @@ const ROLE_LABEL = { superadmin: "Super Admin", admin: "Admin", shop: "Shop" };
 // Read from the users table on every request; the browser can only tick these boxes, never set
 // them for itself.
 export const PERMISSIONS = [
-  { key: "can_create_shops", label: "Create shop accounts", roles: ["admin"] },
-  { key: "can_manage_products", label: "Products & pricing", roles: ["admin", "shop"] },
-  { key: "can_manage_inventory", label: "Stock levels", roles: ["admin", "shop"] },
-  { key: "can_manage_orders", label: "Order manager (statuses, cancellations)", roles: ["admin", "shop"] },
-  { key: "can_update_delivery", label: "Delivery operations (mark delivered)", roles: ["shop"] },
-  { key: "can_collect_cod", label: "Cash collection (confirm COD received)", roles: ["shop"] },
-  { key: "can_manage_settings", label: "Edit shop settings", roles: ["admin"] },
+  { key: "can_create_shops", label: "Create shop accounts" },
+  { key: "can_manage_products", label: "Products & pricing" },
+  { key: "can_manage_inventory", label: "Stock levels" },
+  { key: "can_manage_orders", label: "Order manager (statuses, cancellations)" },
+  { key: "can_update_delivery", label: "Delivery operations (mark delivered)" },
+  { key: "can_collect_cod", label: "Cash collection (confirm COD received)" },
+  { key: "can_manage_settings", label: "Edit shop settings" },
 ];
 
-export default async function AdminsView({ user, base, next, flash, params }) {
+export default function AdminsView({ user, base, next, flash, params }) {
   const users = listUsers();
   const shops = listShops();
   const invites = pendingInvitations();
-  const host = await headers().then((store) => store.get("x-forwarded-host") || store.get("host") || "localhost:3000");
-  const protocol = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
   const editing = params.edit ? db.prepare("SELECT * FROM users WHERE id = ?").get(Number(params.edit)) : null;
   const isNew = params.new === "1" || !editing;
   const form = editing || {};
   const assignedShops = editing ? listAdminShops(editing.id) : shops.map((shop) => shop.id);
-  const setupLink = typeof params.invitation === "string" && params.invitation ? `${protocol}://${host}/set-password?token=${params.invitation}` : "";
+  const invitation = typeof params.invitation === "string" && params.invitation ? params.invitation : "";
 
   return (
     <>
@@ -46,14 +44,18 @@ export default async function AdminsView({ user, base, next, flash, params }) {
       />
       {flash && <Notice kind={flash.kind} text={flash.text} />}
 
-      {setupLink && (
-        <Card title="One-time setup link" description="Send this to the new team member. It works once, expires in 3 days, and the password is stored hashed — never in plain text.">
+      {invitation && (
+        <Card title="One-time setup link" description="Send this to the new team member. The link works once, expires after seven days, and the password is stored hashed — never in plain text.">
           <ol className="setup-steps">
             <li>
-              <span className="form-label">Share this link</span>
-              <input className="input" readOnly value={setupLink} onFocus={(event) => event.target.select()} />
+              <span className="form-label">Share this link with the account holder</span>
+              <SetupLink token={invitation} />
             </li>
-            <li>The account cannot sign in until the link is used.</li>
+            <li>The account cannot sign in until this link has been used to choose a password.</li>
+            <li>
+              Revoking it below deletes the link; the account stays waiting until a new link is sent from the
+              edit screen.
+            </li>
           </ol>
         </Card>
       )}

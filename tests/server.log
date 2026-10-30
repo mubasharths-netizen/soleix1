@@ -1,0 +1,8 @@
+▲ Next.js 16.4.2
+- Local:         http://localhost:3111
+- Network:       http://192.168.30.219:3111
+✓ Ready in 206ms
+⚠ Warning: Next.js ignored package-lock.json in C:\Users\Student\Desktop\SOLEIX because it is outside the current Git repository (C:\Users\Student\Desktop\SOLEIX\soleix).
+ To use this directory, set `outputFileTracingRoot` in your Next.js config.
+
+✓ Running next.config.mjs took 28ms

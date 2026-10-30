@@ -8,8 +8,8 @@ function inArea(pathname, prefix) {
 }
 
 // Cheap gate only: presence of a session cookie. Roles and Firebase signatures are verified
-// on the server, never here — an edge runtime cannot reach the database or Admin SDK.
-export function middleware(request) {
+// on the server, never here — the proxy runtime cannot reach the database or Admin SDK.
+export function proxy(request) {
   const { pathname } = request.nextUrl;
   const staffArea = AREAS.find(([prefix]) => inArea(pathname, prefix));
   if (staffArea) {

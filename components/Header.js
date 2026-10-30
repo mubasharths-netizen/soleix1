@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { formatPrice } from "@/lib/catalog.mjs";
 import Icon from "./Icon";
 import Modal from "./Modal";
 import SignOutButton from "./SignOutButton";
-import { useStore } from "./StoreProvider";
+import { useCatalog, useStore } from "./StoreProvider";
 
 const navigation = [
   ["New Releases", "/shop?collection=New%20Arrivals"],
@@ -18,6 +19,7 @@ const navigation = [
 
 export default function Header() {
   const { count, setCartOpen } = useStore();
+  const { settings } = useCatalog();
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -74,7 +76,7 @@ export default function Header() {
     </div>}
   </div>;
   return <>
-    <div className="promo-bar"><span>Good moves. Better delivery. <span className="promo-extra">Free shipping on orders over PKR 15,000.</span></span><Link href="/info/delivery">Details <Icon name="arrow" size={12} /></Link></div>
+    <div className="promo-bar"><span>Good moves. Better delivery. <span className="promo-extra">{settings.freeDeliveryOver ? `Free delivery over ${formatPrice(settings.freeDeliveryOver)}.` : "Delivery is on us."}</span></span><Link href="/info/delivery">Details <Icon name="arrow" size={12} /></Link></div>
     <header className={`site-header${scrolled ? " is-scrolled" : ""}`}>
       <Link href="/" aria-label="SOLEIX home" className="wordmark">SOLEIX<span className="wordmark-dot">®</span></Link>
       <nav className="desktop-nav" aria-label="Main navigation">{navigation.map(([label, href]) => <Link key={label} href={href} className={label === "Sale" ? "sale-link" : ""}>{label}</Link>)}</nav>
@@ -86,7 +88,7 @@ export default function Header() {
         <button className="icon-button mobile-menu-toggle" onClick={() => setMenuOpen(true)} aria-label="Open menu" aria-expanded={menuOpen}><Icon name="menu" /></button>
       </div>
     </header>
-    <Modal open={menuOpen} onClose={() => setMenuOpen(false)} title="Explore SOLEIX" drawer><nav className="mobile-nav" aria-label="Mobile navigation">{navigation.map(([label, href]) => <Link key={label} href={href} onClick={() => setMenuOpen(false)}>{label}<Icon name="arrow" /></Link>)}<Link href="/wishlist" onClick={() => setMenuOpen(false)}>Favourites <Icon name="heart" /></Link>{signedIn ? <><Link href="/account" onClick={() => setMenuOpen(false)}>My account <Icon name="user" /></Link>{session?.kind === "staff" && <Link href={session.home} onClick={() => setMenuOpen(false)}>Staff dashboard <Icon name="grid" /></Link>}</> : <><Link href="/login" onClick={() => setMenuOpen(false)}>Log in <Icon name="user" /></Link><Link href="/signup" onClick={() => setMenuOpen(false)}>Create account <Icon name="plus" /></Link></>}<Link href="/info/about" onClick={() => setMenuOpen(false)}>Our story <Icon name="diagonal" /></Link></nav><p className="muted mt-8">A fresh perspective on everyday movement.</p></Modal>
+    <Modal open={menuOpen} onClose={() => setMenuOpen(false)} title="Explore SOLEIX" drawer><nav className="mobile-nav" aria-label="Mobile navigation">{navigation.map(([label, href]) => <Link key={label} href={href} onClick={() => setMenuOpen(false)}>{label}<Icon name="arrow" /></Link>)}<Link href="/wishlist" onClick={() => setMenuOpen(false)}>Favourites <Icon name="heart" /></Link><Link href="/track" onClick={() => setMenuOpen(false)}>Track an order <Icon name="truck" /></Link><Link href="/stores" onClick={() => setMenuOpen(false)}>Store locations <Icon name="store" /></Link><Link href="/info/contact" onClick={() => setMenuOpen(false)}>Help and contact <Icon name="mail" /></Link>{signedIn ? <><Link href="/account" onClick={() => setMenuOpen(false)}>My account <Icon name="user" /></Link>{session?.kind === "staff" && <Link href={session.home} onClick={() => setMenuOpen(false)}>Staff dashboard <Icon name="grid" /></Link>}</> : <><Link href="/login" onClick={() => setMenuOpen(false)}>Log in <Icon name="user" /></Link><Link href="/signup" onClick={() => setMenuOpen(false)}>Create account <Icon name="plus" /></Link></>}<Link href="/info/about" onClick={() => setMenuOpen(false)}>Our story <Icon name="diagonal" /></Link></nav><p className="muted mt-8">A fresh perspective on everyday movement.</p></Modal>
     <Modal open={searchOpen} onClose={() => setSearchOpen(false)} title="Find your next pair"><form onSubmit={search} className="search-dialog-form"><label className="sr-only" htmlFor="mobile-search">Search products</label><input id="mobile-search" className="input" placeholder="Try Velocity, running, or Court…" value={query} onChange={(event) => setQuery(event.target.value)} /><button className="button button-dark" type="submit"><Icon name="search" />Search</button></form><p className="muted mt-6">Explore the full collection or search by product name.</p></Modal>
   </>;
 }

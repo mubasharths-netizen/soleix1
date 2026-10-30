@@ -8,6 +8,7 @@ import { colorValues, formatPrice, stockFor } from "@/lib/catalog.mjs";
 import { useStore } from "./StoreProvider";
 import Icon from "./Icon";
 import Modal from "./Modal";
+import { StarCount } from "./StarRating";
 
 export default function ProductCard({ product }) {
   const { wishlist, toggleWishlist, addItem } = useStore();
@@ -52,6 +53,10 @@ export default function ProductCard({ product }) {
     <div className="product-card-info">
       <div className="flex items-start justify-between gap-2"><Link className="product-name" href={`/product/${product.id}`}>{product.name}</Link><div className="color-swatches" aria-label={`${product.colors.length} available colours`}>{product.colors.slice(0, 3).map((item) => <span key={item} className="color-dot" style={{ background: colorValues[item] }} title={item} />)}</div></div>
       <p className="product-category">{product.audience}&apos;s {product.category} Shoes</p>
+      <div className="product-card-meta">
+        <StarCount value={product.rating?.average} count={product.rating?.count} size={14} />
+        {product.totalStock === 0 && <span className="badge badge-off">Sold out</span>}
+      </div>
       <div className="product-price">{formatPrice(product.price)} {product.originalPrice && <span className="old-price">{formatPrice(product.originalPrice)}</span>}</div>
     </div>
     <Modal open={quickAdd} onClose={() => setQuickAdd(false)} title="Make them yours">

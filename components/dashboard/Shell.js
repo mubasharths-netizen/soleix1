@@ -13,11 +13,13 @@ const NAV = [
   { slug: "shops", label: "Shop management", icon: "store", roles: ["superadmin", "admin"] },
   { slug: "products", label: "Products", icon: "box", roles: ["superadmin", "admin", "shop"] },
   { slug: "categories", label: "Categories", icon: "tag", roles: ["superadmin"] },
+  { slug: "reviews", label: "Reviews", icon: "star", roles: ["superadmin", "admin"] },
   { slug: "orders", label: "Orders", icon: "receipt", roles: ["superadmin", "admin", "shop"] },
   { slug: "inventory", label: "Inventory", icon: "layers", roles: ["superadmin", "admin", "shop"], flag: "canManageInventory" },
   { slug: "delivery", label: "Delivery", icon: "truck", roles: ["superadmin", "admin", "shop"], flag: "canUpdateDelivery" },
   { slug: "cod", label: "Cash collection", icon: "check", roles: ["superadmin", "admin", "shop"], flag: "canCollectCod" },
   { slug: "reports", label: "Reports", icon: "chart", roles: ["superadmin", "admin", "shop"] },
+  { slug: "enquiries", label: "Inbox", icon: "inbox", roles: ["superadmin", "admin"] },
   { slug: "activity", label: "Activity log", icon: "shield", roles: ["superadmin"] },
   { slug: "settings", label: "Settings", icon: "gear", roles: ["superadmin", "admin", "shop"] },
 ];
@@ -27,7 +29,8 @@ const ROLE_LABEL = { superadmin: "Super Admin", admin: "Admin", shop: "Shop" };
 export default function Shell({ base, user, children }) {
   const pathname = usePathname();
   // Permission flags come from the verified session row, so a deactivated permission hides the screen.
-  const links = NAV.filter((item) => item.roles.includes(user.role) && (!item.flag || user[item.flag]));
+  // The Super Admin short-circuit mirrors can() on the server: that role is never limited by the tick boxes.
+  const links = NAV.filter((item) => item.roles.includes(user.role) && (!item.flag || user.role === "superadmin" || user[item.flag]));
 
   async function signOut() {
     await clientSignOut();

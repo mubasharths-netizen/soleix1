@@ -178,6 +178,55 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Product reviews. A review is published as soon as it is written, and a staff member can hide
+-- it (visible = 0) without deleting the shopper's words. verified marks a review whose email
+-- matches a delivered order for the same product.
+CREATE TABLE IF NOT EXISTS reviews (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  author TEXT NOT NULL,
+  email TEXT NOT NULL DEFAULT '',
+  rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  fit TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  verified INTEGER NOT NULL DEFAULT 0,
+  visible INTEGER NOT NULL DEFAULT 1,
+  order_reference TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- The storefront contact form. Staff read and close enquiries from the dashboard.
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT NOT NULL DEFAULT '',
+  subject TEXT NOT NULL DEFAULT '',
+  message TEXT NOT NULL,
+  order_reference TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'handled')),
+  handled_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  handled_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Newsletter sign-ups. active = 0 the moment the unsubscribe link is used.
+CREATE TABLE IF NOT EXISTS subscribers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  token TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'storefront',
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  unsubscribed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id, visible);
+CREATE INDEX IF NOT EXISTS idx_reviews_email ON reviews(email);
+CREATE INDEX IF NOT EXISTS idx_contact_status ON contact_messages(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_subscribers_active ON subscribers(active, created_at);
+
 CREATE INDEX IF NOT EXISTS idx_products_shop ON products(shop_id);
 CREATE INDEX IF NOT EXISTS idx_orders_shop ON orders(shop_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);

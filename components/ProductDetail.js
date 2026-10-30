@@ -6,6 +6,8 @@ import { useRef, useState } from "react";
 import { colorValues, formatPrice, stockFor } from "@/lib/catalog.mjs";
 import Icon from "./Icon";
 import ProductCard from "./ProductCard";
+import Reviews from "./Reviews";
+import { StarCount } from "./StarRating";
 import { useCatalog, useStore } from "./StoreProvider";
 
 // All views use the same source photograph. The detail views are labelled crops.
@@ -19,7 +21,7 @@ function imageStyle(view) {
   return { objectFit: "cover", objectPosition: view.position, transform: `scale(${view.scale})`, transformOrigin: view.position };
 }
 
-export default function ProductDetail({ product: listed, relatedProducts = [] }) {
+export default function ProductDetail({ product: listed, relatedProducts = [], rating = { average: 0, count: 0 }, reviews = [] }) {
   const { addItem, toggleWishlist, wishlist } = useStore();
   const { get, settings } = useCatalog();
   const [selectedView, setSelectedView] = useState(0);
@@ -98,7 +100,10 @@ export default function ProductDetail({ product: listed, relatedProducts = [] })
             <span className="text-2xl font-semibold">{formatPrice(product.price)}</span>
             {product.originalPrice && <del className="muted text-lg"><span className="sr-only">Original price: </span>{formatPrice(product.originalPrice)}</del>}
           </div>
-          <p className="muted mb-5 text-xs">No customer reviews yet.</p>
+          <a className="product-rating mb-5" href="#reviews">
+            <StarCount value={rating.average} count={rating.count} size={17} />
+            <span className="text-link">{rating.count ? `${rating.count} review${rating.count === 1 ? "" : "s"}` : "Be the first to review"}</span>
+          </a>
           <p className="mb-6 leading-relaxed">{product.description}</p>
           <div className="notice mb-6" role="note">
             <strong className="block">{product.totalStock ? "Live stock, real checkout." : "Sold out in every size and colour."}</strong>
@@ -182,6 +187,8 @@ export default function ProductDetail({ product: listed, relatedProducts = [] })
           </div>
         </div>
       </div>
+
+      <Reviews product={product} rating={rating} reviews={reviews} />
 
       {relatedProducts.length > 0 && (
         <section className="related-products mt-16 border-t border-black/10 pt-12" aria-labelledby="related-products-heading">

@@ -33,6 +33,12 @@ export default function Icon({ name, size = 20, className = "", ...props }) {
     logout: <><path d="M14 4H5v16h9" /><path d="M18 8l4 4-4 4M9 12h13" /></>,
     image: <><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="9" cy="10" r="1.7" /><path d="m4 19 6-6 5 5 3-3 3 3" /></>,
     users: <><circle cx="9" cy="8" r="3.4" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 5.4a3.4 3.4 0 0 1 0 5.2M17.5 20a6.4 6.4 0 0 0-2-4.6" /></>,
+    star: <path d="m12 3.6 2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.8l5.9-.8L12 3.6Z" />,
+    mail: <><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="m3.5 7 8.5 6 8.5-6" /></>,
+    send: <><path d="M21 3 10.5 13.5M21 3l-6.5 18-4-8.5L21 3Z" /><path d="M3 12.5l7-3" /></>,
+    info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.8v.4" /></>,
+    phone: <path d="M6 3h3l1.5 4.5-2 1.5a11 11 0 0 0 6 6l1.5-2L20 15v3a2.5 2.5 0 0 1-2.7 2.5C10 20 4 14 3.5 5.7A2.5 2.5 0 0 1 6 3Z" />,
+    inbox: <><path d="M3 13 5.5 4h13L21 13v6a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19v-6Z" /><path d="M3 13h5l1 2.5h6l1-2.5h5" /></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} {...props}>{paths[name] || paths.arrow}</svg>;
 }

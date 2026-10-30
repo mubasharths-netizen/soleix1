@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useActionState, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { orderTotals, formatPrice, stockFor } from "@/lib/catalog.mjs";
-import { placeOrder } from "@/lib/storefront-actions";
+import { applyCoupon, placeOrder } from "@/lib/storefront-actions";
 import { useCatalog, useStore } from "@/components/StoreProvider";
 import Icon from "@/components/Icon";
 
@@ -24,6 +24,10 @@ export default function CheckoutForm() {
   const { get, settings, ready } = useCatalog();
   const [values, setValues] = useState({ full_name: "", email: "", phone: "", address: "", city: "", postal_code: "", notes: "" });
   const [fieldErrors, setFieldErrors] = useState({});
+  const [code, setCode] = useState("");
+  const [coupon, setCoupon] = useState(null);
+  const [couponError, setCouponError] = useState("");
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
   const [intent] = useState(() => (typeof sessionStorage === "undefined" ? "" : sessionStorage.getItem("soleix-checkout-intent") || ""));
   const [state, submit, pending] = useActionState(placeOrder, {});
 
@@ -60,7 +64,7 @@ export default function CheckoutForm() {
     () => cart.map((item) => ({ ...item, product: get(item.id) })).filter((item) => item.product),
     [cart, get]
   );
-  const totals = useMemo(() => orderTotals(lines.map((line) => ({ price: line.product.price, quantity: line.quantity })), settings), [lines, settings]);
+  const totals = useMemo(() => orderTotals(lines.map((line) => ({ price: line.product.price, quantity: line.quantity })), settings, coupon?.code || ""), [lines, settings, coupon]);
   const shortStock = lines.filter((line) => stockFor(line.product, line.size, line.color) < line.quantity);
 
   const validationError = state?.error || null;
@@ -82,6 +86,27 @@ export default function CheckoutForm() {
     }
   }
 
+  // The code is checked on the server: the browser never learns what the campaign code is, only
+  // whether the one the shopper typed is worth money on this bag.
+  async function checkCoupon(event) {
+    event.preventDefault();
+    setCheckingCoupon(true);
+    setCouponError("");
+    try {
+      const result = await applyCoupon(code);
+      if (result?.ok) setCoupon(result);
+      else {
+        setCoupon(null);
+        setCouponError(result?.error || "That code is not valid on this store.");
+      }
+    } catch {
+      setCoupon(null);
+      setCouponError("Could not check the code just now. Try again in a moment.");
+    } finally {
+      setCheckingCoupon(false);
+    }
+  }
+
   if (!ready || !cartReady) return <div className="empty-state" role="status">Getting your checkout ready…</div>;
   if (!lines.length) {
     return <div className="empty-state"><span className="empty-icon"><Icon name="bag" size={36} /></span><h2>Nothing to check out.</h2><p>Your bag is empty, so there is nothing to pay for yet.</p><Link href="/shop" className="button button-dark">Browse the rotation <Icon name="arrow" size={18} /></Link></div>;
@@ -92,6 +117,7 @@ export default function CheckoutForm() {
       {/* The browser only ever sends product ids and quantities — prices and stock are re-read server-side. */}
       <input type="hidden" name="cart" value={JSON.stringify(cart.map((item) => ({ id: item.id, size: item.size, color: item.color, qty: item.quantity })))} />
       <input type="hidden" name="intent" value={token} />
+      <input type="hidden" name="coupon" value={coupon?.code || ""} />
       <div className="checkout-fields">
         <section className="checkout-block">
           <h2 className="checkout-heading"><span aria-hidden="true">1</span> Delivery details</h2>
@@ -147,9 +173,39 @@ export default function CheckoutForm() {
 
       <aside className="checkout-summary glass-field">
         <h2>Order summary</h2>
+
+        <div className="coupon-box">
+          {coupon ? (
+            <div className="coupon-applied">
+              <span className="coupon-chip"><Icon name="check" size={14} />{coupon.code} · {coupon.value}</span>
+              <button type="button" className="text-link" onClick={() => { setCoupon(null); setCode(""); setCouponError(""); }}>Remove</button>
+            </div>
+          ) : (
+            <form className="coupon-form" onSubmit={checkCoupon}>
+              <label className="coupon-label" htmlFor={`${uid}-coupon`}>
+                <Icon name="tag" size={16} /> Have a campaign code?
+              </label>
+              <div className="coupon-row">
+                <input id={`${uid}-coupon`} className="auth-input" name="coupon_code" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())}
+                  placeholder="Enter code" autoComplete="off" aria-invalid={couponError ? "true" : undefined} />
+                <button className="button button-outline" type="submit" disabled={checkingCoupon || code.trim().length < 2}>
+                  {checkingCoupon ? "Checking…" : "Apply"}
+                </button>
+              </div>
+              {couponError && <p className="coupon-msg is-error" role="alert">{couponError}</p>}
+              {!couponError && settings.discount?.active && (
+                <p className="coupon-msg">A campaign is running{settings.discount.minimum ? ` on orders over ${formatPrice(settings.discount.minimum)}` : ""}.</p>
+              )}
+            </form>
+          )}
+        </div>
+
         <div className="summary-row"><span>Subtotal</span><span>{formatPrice(totals.subtotal)}</span></div>
         <div className="summary-row"><span>Delivery</span><span>{totals.delivery ? formatPrice(totals.delivery) : "On us"}</span></div>
-        {totals.discount > 0 && <div className="summary-row"><span>Discount</span><span>− {formatPrice(totals.discount)}</span></div>}
+        {totals.discount > 0 && <div className="summary-row is-discount"><span>Discount{coupon ? ` (${coupon.code})` : ""}</span><span>− {formatPrice(totals.discount)}</span></div>}
+        {coupon && totals.discount === 0 && coupon.minimum > 0 && (
+          <p className="coupon-msg">Add {formatPrice(Math.max(0, coupon.minimum - totals.subtotal))} more to unlock {coupon.code}.</p>
+        )}
         <div className="summary-row summary-total"><strong>Total</strong><strong>{formatPrice(totals.total)}</strong></div>
         <p className="sample-note">Prices include taxes. The shop confirms the order by phone before it ships.</p>
 

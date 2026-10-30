@@ -19,6 +19,7 @@ export default function CustomersView({ base, next, flash, params }) {
   const spend = all.reduce((sum, row) => sum + row.spend, 0);
   const due = all.reduce((sum, row) => sum + row.cod_due, 0);
   const buyers = all.filter((row) => row.order_count).length;
+  const plural = (count) => (count === 1 ? "" : "s");
 
   return (
     <>
@@ -30,12 +31,12 @@ export default function CustomersView({ base, next, flash, params }) {
 
       <div className="stat-grid">
         <Stat label="Customer accounts" value={all.length} hint="Registered in the database" />
-        <Stat label="Have ordered" value={buyers} hint={`${all.length - buyers} account${all.length === buyers + 1 ? "" : "s"} with no order yet`} />
+        <Stat label="Have ordered" value={buyers} hint={`${all.length - buyers} account${plural(all.length - buyers)} with no order yet`} />
         <Stat label="Cash collected from them" value={money(spend)} hint="Orders marked as collected" />
         <Stat label="COD they still owe" value={money(due)} hint="Open orders paid on delivery" />
       </div>
 
-      <Card title="All customers" description={`${customers.length} account${customers.length === 1 ? "" : "s"} listed.`}>
+      <Card title="All customers" description={`${customers.length} account${plural(customers.length)} listed.`}>
         <form action={`${base}/customers`} className="toolbar">
           <input className="input" name="q" defaultValue={params.q || ""} placeholder="Name, email or phone" />
           <button className="btn-solid" type="submit">Search</button>

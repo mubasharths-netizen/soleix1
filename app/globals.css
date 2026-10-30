@@ -121,6 +121,8 @@ button.text-link { background: none; border-width: 0 0 1.5px; border-style: soli
 @media (max-width: 640px) { .site-header { width: calc(100% - 28px); } }
 
 .wordmark { font-family: var(--font-display), "Arial Narrow", sans-serif; font-weight: 800; font-size: 26px; letter-spacing: .1em; line-height: 1; padding-bottom: 2px; }
+.site-header .wordmark { display: inline-block; padding: 9px 13px 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); transition: border-color .2s, background .2s; }
+.site-header .wordmark:hover { border-color: rgba(17, 17, 16, .3); background: #eae8e3; }
 .wordmark-dot { font-size: 10px; vertical-align: super; letter-spacing: 0; margin-left: 1px; }
 
 .desktop-nav { display: none; gap: 6px; margin-left: 22px; }

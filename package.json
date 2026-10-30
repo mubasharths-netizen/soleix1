@@ -11,6 +11,7 @@
     "check:firebase": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/check-firebase.mjs",
     "seed:catalog": "node scripts/seed-catalog.mjs",
     "seed:demo": "node scripts/seed-demo-data.mjs",
+    "seed:accounts": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/seed-accounts.mjs",
     "test:auth": "node --env-file-if-exists=.env.local tests/auth.spec.mjs",
     "test:account": "node tests/account-nav.spec.mjs"
   },

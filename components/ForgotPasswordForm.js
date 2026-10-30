@@ -43,6 +43,7 @@ export default function ForgotPasswordForm() {
         <p className="eyebrow">SOLEIX · Account recovery</p>
         <h1 className="auth-title">Reset your password</h1>
         <p className="auth-note">Enter the email on your account and Firebase will send a secure reset link. The link expires after an hour.</p>
+        <p className="auth-note">Accounts you created on this site with an email and password are not in Firebase — ask the SOLEIX team to set a new password for you.</p>
       </div>
 
       {sent ? (

@@ -74,6 +74,9 @@ CREATE TABLE IF NOT EXISTS inventory (
   UNIQUE (product_id, size, color)
 );
 
+-- Shoppers. uid is the Firebase uid for accounts created through Google or the Firebase
+-- email/password sign-in, and a generated uuid for accounts this site created itself — those
+-- carry a scrypt password_hash and sign in without Firebase.
 CREATE TABLE IF NOT EXISTS customers (
   uid TEXT PRIMARY KEY,
   email TEXT NOT NULL DEFAULT '',
@@ -81,9 +84,17 @@ CREATE TABLE IF NOT EXISTS customers (
   phone TEXT NOT NULL DEFAULT '',
   picture TEXT NOT NULL DEFAULT '',
   provider TEXT NOT NULL DEFAULT 'password',
+  password_hash TEXT NOT NULL DEFAULT '',
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS customer_sessions (
+  token_hash TEXT PRIMARY KEY,
+  uid TEXT NOT NULL REFERENCES customers(uid) ON DELETE CASCADE,
+  expires_at INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS customer_addresses (
@@ -234,6 +245,8 @@ CREATE INDEX IF NOT EXISTS idx_orders_uid ON orders(user_uid);
 CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(customer_email);
 CREATE INDEX IF NOT EXISTS idx_inventory_product ON inventory(product_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_customer_sessions_uid ON customer_sessions(uid);
+CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email);
 CREATE INDEX IF NOT EXISTS idx_events_order ON order_events(order_id);
 CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_addresses_uid ON customer_addresses(uid);

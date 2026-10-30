@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ActiveBadge, Card, Notice, PageHead, Stat, Table } from "@/components/dashboard/Bits";
-import { toggleCustomerAction } from "@/lib/dashboard-actions";
+import { setCustomerPasswordAction, toggleCustomerAction } from "@/lib/dashboard-actions";
 import { listCustomers, money } from "@/lib/queries.mjs";
 
 const PROVIDER_LABEL = {
@@ -70,6 +70,15 @@ export default function CustomersView({ base, next, flash, params }) {
                       {row.active ? "Block sign-in" : "Restore access"}
                     </button>
                   </form>
+                  {row.local_account ? (
+                    <form action={setCustomerPasswordAction} className="inline-form">
+                      <input type="hidden" name="next" value={next} />
+                      <input type="hidden" name="uid" value={row.uid} />
+                      <label className="sr-only" htmlFor={`password-${row.uid}`}>New password</label>
+                      <input className="input" id={`password-${row.uid}`} type="text" name="password" minLength={8} placeholder="New password" />
+                      <button className="link-quiet" type="submit">Set password</button>
+                    </form>
+                  ) : null}
                 </div>
               </td>
             </tr>
@@ -83,7 +92,9 @@ export default function CustomersView({ base, next, flash, params }) {
         />
         <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>
           Blocking an account keeps its order history and removes its access to the account area — the shopper can
-          contact you, and you can restore access here.{" "}
+          contact you, and you can restore access here. Shoppers who registered with an email and password on this
+          site get a new password from this screen too, because the storefront&apos;s Forgot password link only
+          reaches Firebase accounts.{" "}
           <Link className="link-quiet" href={`${base}/orders`}>
             Open their orders
           </Link>

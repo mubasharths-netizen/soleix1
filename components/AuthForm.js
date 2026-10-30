@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { firebaseAuthAction, loginAction } from "@/lib/auth-actions";
+import { firebaseAuthAction, loginAction, signUpAction } from "@/lib/auth-actions";
 import {
   completeRedirectSignIn,
   firebaseEnabled,
-  finishSignUp,
   signInWithGoogle,
   signInWithPassword,
 } from "@/lib/firebase/client";
@@ -84,11 +83,6 @@ function friendlyAuthError(error) {
   }
 }
 
-// Shown on Sign Up when the Firebase web config is absent, so visitors are never told their
-// credentials are wrong for a sign-up the site cannot yet perform.
-const SIGNUP_UNAVAILABLE = "New customer accounts open as soon as this site is connected to its Firebase project. Staff can already sign in on the login page.";
-const SIGNUP_BLOCKED = "Sign up is not available yet: this site is not connected to a Firebase project. Run `npm run check:firebase` to see which NEXT_PUBLIC_FIREBASE_* values are missing, add them to .env.local, then restart.";
-
 export default function AuthForm({ mode, next }) {
   const [values, setValues] = useState({ fullName: "", email: "", password: "", confirm: "" });
   const [shown, setShown] = useState(false);
@@ -123,19 +117,14 @@ export default function AuthForm({ mode, next }) {
     return Object.keys(found).length === 0;
   }
 
-  // Staff accounts live in SQLite and are always tried before Firebase, so a team sign-in never
-  // depends on the Firebase project being reachable or correctly configured.
-  async function staffAttempt(email) {
+  // This site's own records answer first: staff roles from the users table, shoppers from the
+  // customers table. Neither depends on the Firebase project being reachable or configured.
+  async function serverSignIn(email) {
     const form = new FormData();
     form.set("email", email);
     form.set("password", values.password);
     if (next) form.set("next", next);
     return loginAction(null, form);
-  }
-
-  async function staffSignIn(email) {
-    const result = await staffAttempt(email);
-    if (result?.error) setError(result.error);
   }
 
   async function submit(event) {
@@ -146,30 +135,25 @@ export default function AuthForm({ mode, next }) {
     setError(null);
     setBusy("form");
     try {
-      if (!firebaseEnabled) {
-        if (mode === "signup") {
-          setError(SIGNUP_BLOCKED);
-          return;
-        }
-        await staffSignIn(email);
-        return;
-      }
       if (mode === "signup") {
-        try {
-          const idToken = await finishSignUp({ email, password: values.password, fullName });
-          const result = await firebaseAuthAction({ idToken, next, fullName: fullName || undefined });
-          if (result?.error) setError(result.error);
-        } catch (authError) {
-          const message = friendlyAuthError(authError);
-          if (authError.code === "auth/email-already-in-use" || authError.code === "auth/invalid-email") setFieldErrors((c) => ({ ...c, email: message }));
-          else if (authError.code === "auth/weak-password") setFieldErrors((c) => ({ ...c, password: message }));
-          else setError(message);
-        }
+        const form = new FormData();
+        form.set("fullName", fullName);
+        form.set("email", email);
+        form.set("password", values.password);
+        form.set("confirm", values.confirm);
+        if (next) form.set("next", next);
+        const result = await signUpAction(null, form);
+        if (result?.error) setError(result.error);
         return;
       }
-      // Login: SQLite first. Asking Firebase for a staff email would answer 400 on every sign-in,
-      // so the customer lookup only runs once the staff records have refused the pair.
-      const staff = await staffAttempt(email);
+      if (!firebaseEnabled) {
+        const result = await serverSignIn(email);
+        if (result?.error) setError(result.error);
+        return;
+      }
+      // Login: this site's own records first. Asking Firebase for a staff email would answer 400
+      // on every sign-in, so the customer lookup only runs once the database has refused the pair.
+      const staff = await serverSignIn(email);
       if (!staff?.error) return;
       try {
         const idToken = await signInWithPassword({ email, password: values.password });
@@ -213,7 +197,6 @@ export default function AuthForm({ mode, next }) {
             ? "One account for your favourites, bag and order history across every SOLEIX shop."
             : "Customers sign in with email or Google. Staff and shop teams use the same form — roles come from our records, never from this page."}
         </p>
-        {!firebaseEnabled && isSignup && <p className="auth-notice">{SIGNUP_UNAVAILABLE}</p>}
       </div>
 
       <form onSubmit={submit} noValidate>

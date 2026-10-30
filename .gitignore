@@ -45,3 +45,6 @@ tests/artifacts/
 
 # local database + uploaded product images
 data/
+
+.vercel
+.env*

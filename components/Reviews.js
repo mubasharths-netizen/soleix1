@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { submitReview } from "@/lib/storefront-actions";
-import { FIT_OPTIONS } from "@/lib/reviews.mjs";
+import { FIT_OPTIONS } from "@/lib/fit-options.mjs";
 import Icon from "./Icon";
 import { StarMeter } from "./StarRating";
 import { useStore } from "./StoreProvider";
@@ -104,9 +105,9 @@ export default function Reviews({ product, rating, reviews = [] }) {
             </div>
             {state?.error && <p className="auth-error" role="alert">{state.error}</p>}
             <button type="submit" className="button button-dark" disabled={pending || !values.rating}>
-              {pending ? (<><span className="auth-spinner" aria-hidden="true" /> Publishing</>) : (<>Publish review <Icon name="arrow" size={18} />)}
+              {pending ? (<><span className="auth-spinner" aria-hidden="true" /> Publishing</>) : (<>Publish review <Icon name="arrow" size={18} /></>)}
             </button>
-            <p className="sample-note">By posting you agree that the review is your own experience with a pair you received. Read the <a className="text-link" href="/info/terms">terms</a>.</p>
+            <p className="sample-note">By posting you agree that the review is your own experience with a pair you received. Read the <Link className="text-link" href="/info/terms">terms</Link>.</p>
           </motion.form>
         )}
       </AnimatePresence>

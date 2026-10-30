@@ -8,13 +8,14 @@ import { randomUUID } from "node:crypto";
 const PASSWORD = process.env.SEED_ACCOUNT_PASSWORD || "mubasharali123";
 
 const ACCOUNTS = [
-  { email: "mubashaerths@gmail.com", name: "Mubashar Ali", role: "admin", allShops: true },
+  { email: "mubashaerths@gmail.com", name: "Mubashar Ali", role: "superadmin", allShops: true },
   { email: "mubashartha@gmail.com", name: "Mubashar Ali", role: "admin", allShops: true },
   { email: "mubasharthe@gmail.com", name: "Mubashar Ali", role: "shop", shop_id: 1 },
   { email: "mubasharthm@gmail.com", name: "Mubashar Ali", role: "customer" },
 ];
 
 const PERMISSIONS = {
+  superadmin: { can_create_shops: 1, can_manage_products: 1, can_manage_inventory: 1, can_manage_orders: 1, can_manage_settings: 1, can_update_delivery: 1, can_collect_cod: 1 },
   admin: { can_create_shops: 1, can_manage_products: 1, can_manage_inventory: 1, can_manage_orders: 1, can_manage_settings: 1, can_update_delivery: 1, can_collect_cod: 1 },
   shop: { can_create_shops: 0, can_manage_products: 1, can_manage_inventory: 1, can_manage_orders: 1, can_manage_settings: 0, can_update_delivery: 1, can_collect_cod: 1 },
 };
@@ -63,13 +64,15 @@ function saveStaff(account) {
 async function mirrorToFirebase() {
   const notes = [];
   const admin = await import("../lib/firebase/admin.mjs");
-  if (!admin.firebaseAdminEnabled()) return { enabled: false, notes: [
+  const loaded = await admin.firebaseAdmin();
+  if (!loaded) return { enabled: false, notes: admin.firebaseAdminEnabled() ? [
+    `Firebase credentials are set but the Admin SDK cannot start here — ${admin.firebaseAdminError() || "initialisation failed"}.`,
+  ] : [
     "Firebase skipped — FIREBASE_SERVICE_ACCOUNT (or FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY) is missing from .env.local.",
     "Add it from Firebase console → Project settings → Service accounts → Generate new private key, then run `npm run check:firebase` and re-run this script.",
   ] };
 
-  const { getAuth } = await import("firebase-admin/auth");
-  const auth = getAuth();
+  const auth = loaded.getAuth();
   for (const account of ACCOUNTS) {
     const email = normalizeEmail(account.email);
     try {

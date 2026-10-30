@@ -3,7 +3,7 @@ import { StarMeter } from "@/components/StarRating";
 import { ActiveBadge, Card, Notice, PageHead, Stat, Table } from "@/components/dashboard/Bits";
 import { deleteReviewAction, toggleReviewVisibilityAction } from "@/lib/dashboard-actions";
 import { listReviews, reviewStats } from "@/lib/queries.mjs";
-import { fitLabel } from "@/lib/reviews.mjs";
+import { fitLabel } from "@/lib/fit-options.mjs";
 import { shopIdsFor } from "@/lib/session.mjs";
 
 export default function ReviewsView({ user, base, next, flash, params }) {

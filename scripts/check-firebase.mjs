@@ -36,11 +36,11 @@ let adminResult = "skipped";
 let firestoreResult = "skipped";
 if (adminReady) {
   try {
-    const { firebaseAdminEnabled } = await import("../lib/firebase/admin.mjs");
-    adminResult = firebaseAdminEnabled() ? "initialised" : "could not initialise (check the key JSON / private key line breaks)";
-    if (adminResult === "initialised") {
-      const { getFirestore } = await import("firebase-admin/firestore");
-      const snapshot = await getFirestore().collection("profiles").limit(1).get();
+    const { firebaseAdmin, firebaseAdminError } = await import("../lib/firebase/admin.mjs");
+    const loaded = await firebaseAdmin();
+    adminResult = loaded ? "initialised" : `could not start — ${firebaseAdminError() || "check the key JSON / private key line breaks"}`;
+    if (loaded) {
+      const snapshot = await loaded.getFirestore().collection("profiles").limit(1).get();
       firestoreResult = `reachable (${snapshot.size} profile document(s) in this page)`;
     }
   } catch (error) {
